@@ -255,14 +255,22 @@ mod tests {
 
     #[test]
     fn five_cards_straight() {
-        let cards = [
+        let first = [
             CardNumber::NINE_CLUBS,
             CardNumber::KING_SPADES,
             CardNumber::QUEEN_SPADES,
             CardNumber::JACK_SPADES,
             CardNumber::TEN_SPADES,
         ];
-        assert_eq!(evaluate::five_cards(cards), 1601);
+        let second = [
+            CardNumber::NINE_CLUBS,
+            CardNumber::QUEEN_SPADES,
+            CardNumber::JACK_SPADES,
+            CardNumber::TEN_SPADES,
+            CardNumber::EIGHT_CLUBS,
+        ];
+        assert_eq!(evaluate::five_cards(first), 1601);
+        assert_eq!(evaluate::five_cards(second), 1602);
     }
 
     #[test]
@@ -279,13 +287,21 @@ mod tests {
 
     #[test]
     fn five_cards_king_high() {
-        let cards = [
+        let first = [
             CardNumber::JACK_CLUBS,
             CardNumber::DEUCE_CLUBS,
             CardNumber::TREY_CLUBS,
             CardNumber::KING_SPADES,
             CardNumber::TEN_SPADES,
         ];
-        assert_eq!(evaluate::five_cards(cards), 6825);
+        let second = [
+            CardNumber::JACK_CLUBS,
+            CardNumber::QUEEN_DIAMONDS,
+            CardNumber::TREY_CLUBS,
+            CardNumber::KING_SPADES,
+            CardNumber::TEN_SPADES,
+        ];
+        assert_eq!(evaluate::five_cards(first), 6825);
+        assert_eq!(evaluate::five_cards(second), 6684);
     }
 }
