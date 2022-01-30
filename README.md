@@ -1,4 +1,4 @@
-# ckc.rs
+# ckc-rs
 
 Implementation of a modified [Cactus Kev's Poker Hand Evaluator](https://suffe.cool/poker/evaluator.html)
 library in Rust. Code inspired and lookup tables borrowed from Vladislav Supalov's 
