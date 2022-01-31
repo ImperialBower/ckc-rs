@@ -1,5 +1,7 @@
 #![no_std]
 
+extern crate alloc;
+
 mod lookups;
 
 /// A `PokerCard` is a u32 representation of a variant of Cactus Kev's binary
@@ -242,6 +244,7 @@ pub mod evaluate {
 
 #[cfg(test)]
 mod tests {
+    use alloc::format;
     use super::*;
 
     #[test]
@@ -315,6 +318,21 @@ mod tests {
         ];
         assert_eq!(evaluate::five_cards(first), 6825);
         assert_eq!(evaluate::five_cards(second), 6684);
+    }
+
+    #[test]
+    fn or_rank_bits() {
+        let cards = [
+            CardNumber::ACE_SPADES,
+            CardNumber::KING_SPADES,
+            CardNumber::QUEEN_SPADES,
+            CardNumber::JACK_SPADES,
+            CardNumber::TEN_SPADES,
+        ];
+
+        let or = evaluate::or_rank_bits(cards);
+        assert_eq!("0001111100000000", format!("{:016b}", or));
+        assert_eq!(or, 7936);
     }
 
     #[test]
