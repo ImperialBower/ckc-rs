@@ -1,5 +1,9 @@
 # ckc-rs
 
+[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Crates.io Version](https://img.shields.io/crates/v/ckc-rs.svg)](https://crates.io/crates/ckc-rs)
+
+
 Implementation of a modified [Cactus Kev's Poker Hand Evaluator](https://suffe.cool/poker/evaluator.html)
 library in Rust. Code inspired and lookup tables borrowed from Vladislav Supalov's 
 [pokereval-rs](https://github.com/vsupalov/pokereval-rs)
