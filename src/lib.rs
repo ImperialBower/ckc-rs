@@ -149,6 +149,9 @@ pub mod evaluate {
 
     #[must_use]
     pub fn five_cards(five_cards: [PokerCard; 5]) -> HandRankValue {
+        if is_corrupt(five_cards) || has_dupes(five_cards) {
+            return CardNumber::BLANK as HandRankValue;
+        }
         let i = or_rank_bits(five_cards);
 
         if is_flush(five_cards) {
@@ -175,7 +178,14 @@ pub mod evaluate {
             != 0
     }
 
+    /// Returns a value that is made up of performing an or operation on all of the
+    /// rank bit flags of the `PokerCard`.
     #[must_use]
+    pub fn or_rank_bits(five_cards: [PokerCard; 5]) -> usize {
+        ((five_cards[0] | five_cards[1] | five_cards[2] | five_cards[3] | five_cards[4]) as usize)
+            >> 16
+    }
+
     #[allow(clippy::comparison_chain)]
     fn find_in_products(key: usize) -> usize {
         let mut low = 0;
@@ -197,7 +207,19 @@ pub mod evaluate {
         0
     }
 
-    #[must_use]
+    fn has_dupes(c: [PokerCard; 5]) -> bool {
+        (1..5).any(|i| c[i..].contains(&c[i - 1]))
+    }
+
+    fn is_corrupt(c: [PokerCard; 5]) -> bool {
+        for x in &c {
+            if CardNumber::filter(*x) == CardNumber::BLANK {
+                return true;
+            }
+        }
+        false
+    }
+
     fn multiply_primes(five_cards: [PokerCard; 5]) -> usize {
         ((five_cards[0] & 0xff)
             * (five_cards[1] & 0xff)
@@ -206,20 +228,10 @@ pub mod evaluate {
             * (five_cards[4] & 0xff)) as usize
     }
 
-    #[must_use]
     fn not_unique(five_cards: [PokerCard; 5]) -> HandRankValue {
         crate::lookups::VALUES[find_in_products(multiply_primes(five_cards))]
     }
 
-    /// Returns a value that is made up of performing an or operation on all of the
-    /// rank bit flags of the `PokerCard`.
-    #[must_use]
-    fn or_rank_bits(five_cards: [PokerCard; 5]) -> usize {
-        ((five_cards[0] | five_cards[1] | five_cards[2] | five_cards[3] | five_cards[4]) as usize)
-            >> 16
-    }
-
-    #[must_use]
     fn unique(index: usize) -> HandRankValue {
         if index > POSSIBLE_COMBINATIONS {
             return CardNumber::BLANK as HandRankValue;
@@ -303,5 +315,37 @@ mod tests {
         ];
         assert_eq!(evaluate::five_cards(first), 6825);
         assert_eq!(evaluate::five_cards(second), 6684);
+    }
+
+    #[test]
+    fn check_dupes() {
+        let hand = [
+            CardNumber::JACK_CLUBS,
+            CardNumber::DEUCE_CLUBS,
+            CardNumber::TREY_CLUBS,
+            CardNumber::KING_SPADES,
+            CardNumber::JACK_CLUBS,
+        ];
+        assert_eq!(evaluate::five_cards(hand), 0);
+    }
+
+    #[test]
+    fn check_corrupt() {
+        let first = [
+            CardNumber::JACK_CLUBS,
+            CardNumber::DEUCE_CLUBS,
+            23,
+            CardNumber::KING_SPADES,
+            CardNumber::TEN_SPADES,
+        ];
+        let second = [
+            CardNumber::JACK_CLUBS,
+            CardNumber::QUEEN_DIAMONDS,
+            CardNumber::TREY_CLUBS,
+            CardNumber::KING_SPADES,
+            CardNumber::BLANK,
+        ];
+        assert_eq!(evaluate::five_cards(first), 0);
+        assert_eq!(evaluate::five_cards(second), 0);
     }
 }
