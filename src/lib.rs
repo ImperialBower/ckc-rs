@@ -2,8 +2,8 @@
 
 extern crate alloc;
 
-pub mod bitvec;
 mod lookups;
+pub mod types;
 
 /// A `PokerCard` is a u32 representation of a variant of Cactus Kev's binary
 /// representation of a poker card as designed for rapid hand evaluation as
@@ -140,6 +140,31 @@ impl CardNumber {
             _ => CardNumber::BLANK,
         }
     }
+}
+
+pub enum CardRank {
+    ACE,
+    KING,
+    QUEEN,
+    JACK,
+    TEN,
+    NINE,
+    EIGHT,
+    SEVEN,
+    SIX,
+    FIVE,
+    FOUR,
+    THREE,
+    TWO,
+    Blank,
+}
+
+pub enum CardSuit {
+    SPADES,
+    HEARTS,
+    DIAMONDS,
+    CLUBS,
+    Blank,
 }
 
 pub mod evaluate {
