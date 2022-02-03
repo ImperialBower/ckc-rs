@@ -2,6 +2,7 @@
 
 extern crate alloc;
 
+pub mod bitvec;
 mod lookups;
 
 /// A `PokerCard` is a u32 representation of a variant of Cactus Kev's binary
@@ -244,8 +245,8 @@ pub mod evaluate {
 
 #[cfg(test)]
 mod tests {
-    use alloc::format;
     use super::*;
+    use alloc::format;
 
     #[test]
     fn filter() {

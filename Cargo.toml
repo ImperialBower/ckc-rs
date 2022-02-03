@@ -12,5 +12,7 @@ homepage = "https://github.com/ContractBridge/ckc-rs"
 
 [dependencies]
 log = { version = "0.4.14", default-features = false }
+bitvec = { version = "1.0.0", default-features = false, features = ["alloc"] }
+
 #libm = "0.2.1"
 #serde = { version = "1.0.133", default-features = false, features = ["derive"] }
