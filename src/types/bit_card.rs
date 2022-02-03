@@ -1,32 +1,32 @@
 use crate::{CardRank, CardSuit, PokerCard};
 use bitvec::field::BitField;
-use bitvec::prelude::{BitArray, BitSlice, BitVec, Msb0};
+use bitvec::prelude::{BitArray, BitSlice};
 
 /// `BitCard` is an experiment with using the
 /// [Alexander Payne](https://myrrlyn.net/)'s wonderful
 /// [types](https://github.com/bitvecto-rs/bitvec) library to represent
 /// [Cactus Kev's](https://suffe.cool/poker/evaluator.html) binary representation
 /// of a Poker card.
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct BitCard(BitArray<Msb0, [u8; 4]>);
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq)]
+pub struct BitCard(BitArray<[u8; 4]>);
 
 impl BitCard {
     // Constructors
     #[must_use]
-    pub fn new(b: BitArray<Msb0, [u8; 4]>) -> BitCard {
+    pub fn new(b: BitArray<[u8; 4]>) -> BitCard {
         BitCard(b)
     }
 
     // Struct methods
 
     #[must_use]
-    pub fn as_bitarray(&self) -> BitArray<Msb0, [u8; 4]> {
-        self.0.copy()
+    pub fn as_bitarray(&self) -> BitArray<[u8; 4]> {
+        self.0
     }
 
     #[must_use]
-    pub fn as_bitslice(&self) -> &BitSlice<Msb0, u8> {
-        self.0.copy().as_bitslice()
+    pub fn as_bitslice(&self) -> &BitSlice<u8> {
+        self.0.as_bitslice()
     }
 
     #[must_use]
@@ -50,8 +50,8 @@ impl BitCard {
     }
 
     #[must_use]
-    pub fn get_rank_bitslice(&self) -> &BitSlice<Msb0, u8> {
-        &self.0.copy()[..16]
+    pub fn get_rank_bitslice(&self) -> &BitSlice<u8> {
+        &self.0[..16]
     }
 
     #[must_use]
@@ -67,8 +67,8 @@ impl BitCard {
 
     /// Returns a `BitSlice` of the `Suit` section of the `CactusKev` `BitArray`.
     #[must_use]
-    pub fn get_suit_bitslice(&self) -> &BitSlice<Msb0, u8> {
-        &self.0.copy()[16..20]
+    pub fn get_suit_bitslice(&self) -> &BitSlice<u8> {
+        &self.0[16..20]
     }
 
     #[must_use]
@@ -80,36 +80,6 @@ impl BitCard {
     #[must_use]
     pub fn is_blank(&self) -> bool {
         self.0.count_zeros() == 32
-    }
-
-    #[must_use]
-    pub fn and(&self, bc: &BitSlice<Msb0, u8>) -> BitVec<Msb0, u8> {
-        self.as_bitslice().to_bitvec() | bc.to_bitvec()
-    }
-
-    #[must_use]
-    pub fn or(&self, bc: &BitSlice<Msb0, u8>) -> BitVec<Msb0, u8> {
-        self.as_bitslice().to_bitvec() | bc.to_bitvec()
-    }
-
-    #[must_use]
-    pub fn or_rank_bitslice(&self, bc: &BitSlice<Msb0, u8>) -> BitVec<Msb0, u8> {
-        self.get_rank_bitslice().to_bitvec() | bc.to_bitvec()
-    }
-
-    #[must_use]
-    pub fn and_suit_bitslice(&self, bc: &BitSlice<Msb0, u8>) -> BitVec<Msb0, u8> {
-        self.get_suit_bitslice().to_bitvec() & bc.to_bitvec()
-    }
-
-    #[must_use]
-    pub fn or_suit_bitslice(&self, bc: &BitSlice<Msb0, u8>) -> BitVec<Msb0, u8> {
-        self.get_suit_bitslice().to_bitvec() | bc.to_bitvec()
-    }
-
-    #[must_use]
-    pub fn to_bitvec(&self) -> BitVec<Msb0, u8> {
-        self.0.copy().to_bitvec()
     }
 
     #[must_use]
@@ -155,11 +125,30 @@ impl BitCard {
             _ => (),
         }
     }
-}
 
-impl Default for BitCard {
-    fn default() -> BitCard {
-        BitCard::new(BitArray::zeroed())
+    #[must_use]
+    pub fn and(&self, bc: &BitSlice<u8>) -> &BitSlice<u8> {
+        self.as_bitslice() | bc
+    }
+
+    #[must_use]
+    pub fn or(&self, bc: &BitSlice<u8>) -> &BitSlice<u8> {
+        self.as_bitslice() | bc
+    }
+
+    #[must_use]
+    pub fn or_rank_bitslice(&self, bc: &BitSlice<u8>) -> &BitSlice<u8> {
+        self.get_rank_bitslice() | bc
+    }
+
+    #[must_use]
+    pub fn and_suit_bitslice(&self, bc: &BitSlice<u8>) -> &BitSlice<u8> {
+        self.get_suit_bitslice() & bc
+    }
+
+    #[must_use]
+    pub fn or_suit_bitslice(&self, bc: &BitSlice<u8>) -> &BitSlice<u8> {
+        self.get_suit_bitslice() | bc
     }
 }
 
@@ -180,7 +169,6 @@ mod bit_card_tests {
     use super::*;
     use crate::types::deck::{Deck, POKER_DECK};
     use crate::CardNumber;
-    use rstest::rstest;
 
     #[test]
     fn len() {
@@ -209,55 +197,55 @@ mod bit_card_tests {
     fn get_rank() {
         assert_eq!(
             BitCard::from(CardNumber::ACE_SPADES).get_rank(),
-            cardpack::Rank::new(cardpack::ACE)
+            CardRank::ACE
         );
         assert_eq!(
             BitCard::from(CardNumber::KING_SPADES).get_rank(),
-            cardpack::Rank::new(cardpack::KING)
+            CardRank::KING
         );
         assert_eq!(
             BitCard::from(CardNumber::QUEEN_SPADES).get_rank(),
-            cardpack::Rank::new(cardpack::QUEEN)
+            CardRank::QUEEN
         );
         assert_eq!(
             BitCard::from(CardNumber::JACK_SPADES).get_rank(),
-            cardpack::Rank::new(cardpack::JACK)
+            CardRank::JACK
         );
         assert_eq!(
             BitCard::from(CardNumber::TEN_SPADES).get_rank(),
-            cardpack::Rank::new(cardpack::TEN)
+            CardRank::TEN
         );
         assert_eq!(
             BitCard::from(CardNumber::NINE_SPADES).get_rank(),
-            cardpack::Rank::new(cardpack::NINE)
+            CardRank::NINE
         );
         assert_eq!(
             BitCard::from(CardNumber::EIGHT_DIAMONDS).get_rank(),
-            cardpack::Rank::new(cardpack::EIGHT)
+            CardRank::EIGHT
         );
         assert_eq!(
             BitCard::from(CardNumber::SEVEN_HEARTS).get_rank(),
-            cardpack::Rank::new(cardpack::SEVEN)
+            CardRank::SEVEN
         );
         assert_eq!(
             BitCard::from(CardNumber::SIX_SPADES).get_rank(),
-            cardpack::Rank::new(cardpack::SIX)
+            CardRank::SIX
         );
         assert_eq!(
             BitCard::from(CardNumber::FIVE_CLUBS).get_rank(),
-            cardpack::Rank::new(cardpack::FIVE)
+            CardRank::FIVE
         );
         assert_eq!(
             BitCard::from(CardNumber::FOUR_DIAMONDS).get_rank(),
-            cardpack::Rank::new(cardpack::FOUR)
+            CardRank::FOUR
         );
         assert_eq!(
             BitCard::from(CardNumber::TREY_HEARTS).get_rank(),
-            cardpack::Rank::new(cardpack::THREE)
+            CardRank::THREE
         );
         assert_eq!(
             BitCard::from(CardNumber::DEUCE_CLUBS).get_rank(),
-            cardpack::Rank::new(cardpack::TWO)
+            CardRank::TWO
         );
     }
 
@@ -271,22 +259,22 @@ mod bit_card_tests {
     fn get_suit() {
         assert_eq!(
             BitCard::from(CardNumber::TEN_SPADES).get_suit(),
-            cardpack::Suit::new(cardpack::SPADES)
+            CardSuit::SPADES
         );
 
         assert_eq!(
             BitCard::from(CardNumber::NINE_HEARTS).get_suit(),
-            cardpack::Suit::new(cardpack::HEARTS)
+            CardSuit::HEARTS
         );
 
         assert_eq!(
             BitCard::from(CardNumber::FIVE_DIAMONDS).get_suit(),
-            cardpack::Suit::new(cardpack::DIAMONDS)
+            CardSuit::DIAMONDS
         );
 
         assert_eq!(
             BitCard::from(CardNumber::NINE_CLUBS).get_suit(),
-            cardpack::Suit::new(cardpack::CLUBS)
+            CardSuit::CLUBS
         )
     }
 
@@ -305,18 +293,22 @@ mod bit_card_tests {
         assert_eq!(0b0001, card.get_suit_bitslice());
     }
 
-    #[rstest]
-    #[case(CardNumber::DEUCE_CLUBS, 4096)]
-    #[case(CardNumber::DEUCE_DIAMONDS, 8192)]
-    #[case(CardNumber::DEUCE_HEARTS, 16384)]
-    #[case(CardNumber::DEUCE_SPADES, 32768)]
-    fn get_suit_binary_signature(#[case] card_number: PokerCard, #[case] expected: u32) {
-        let bit_card: BitCard = BitCard::from(card_number);
-
-        assert_eq!(bit_card.get_suit_binary_signature(), expected);
+    fn get_suit_binary_signature() {
         assert_eq!(
-            bit_card.get_suit_binary_signature(),
-            PlayingCard::suit_binary_signature(&card)
+            BitCard::from(CardNumber::DEUCE_CLUBS).get_suit_binary_signature(),
+            4096
+        );
+        assert_eq!(
+            BitCard::from(CardNumber::DEUCE_DIAMONDS).get_suit_binary_signature(),
+            8192
+        );
+        assert_eq!(
+            BitCard::from(CardNumber::DEUCE_HEARTS).get_suit_binary_signature(),
+            16384
+        );
+        assert_eq!(
+            BitCard::from(CardNumber::DEUCE_SPADES).get_suit_binary_signature(),
+            32768
         );
     }
 
@@ -341,7 +333,7 @@ mod bit_card_tests {
 
     #[test]
     fn and_suit_bitslice() {
-        let king_spade = BitCard::from(CardNumber::KING_SPADES);
+        let king_spades = BitCard::from(CardNumber::KING_SPADES);
         let queen_spades = BitCard::from(CardNumber::QUEEN_SPADES);
 
         let actual = king_spades.or_suit_bitslice(&queen_spades.get_suit_bitslice());
@@ -351,7 +343,7 @@ mod bit_card_tests {
 
     #[test]
     fn or_suit_bitslice() {
-        let king_spade = BitCard::from(CardNumber::KING_SPADES);
+        let king_spades = BitCard::from(CardNumber::KING_SPADES);
         let king_hearts = BitCard::from(CardNumber::KING_HEARTS);
         let king_diamonds = BitCard::from(CardNumber::KING_DIAMONDS);
         let king_clubs = BitCard::from(CardNumber::KING_CLUBS);
@@ -359,7 +351,7 @@ mod bit_card_tests {
         let actual = king_spades.or_suit_bitslice(&king_hearts.get_suit_bitslice());
         assert_eq!(0b1100, actual);
 
-        let actual = king_diamonds.or_suit_bitslice(&actual);
+        let actual = king_diamonds.or_suit_bitslice(actual);
         assert_eq!(0b1110, actual);
 
         let actual = king_clubs.or_suit_bitslice(&actual);

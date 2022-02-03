@@ -142,6 +142,7 @@ impl CardNumber {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CardRank {
     ACE,
     KING,
@@ -159,6 +160,7 @@ pub enum CardRank {
     Blank,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CardSuit {
     SPADES,
     HEARTS,
