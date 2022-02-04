@@ -416,7 +416,7 @@ pub trait PokerCard {
 
 impl PokerCard for CKCNumber {
     fn as_u32(&self) -> u32 {
-        self.0
+        *self
     }
 
     fn is_blank(&self) -> bool {
