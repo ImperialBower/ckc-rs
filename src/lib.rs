@@ -409,10 +409,16 @@ pub trait PokerCard {
         }
     }
 
+    fn as_u32(&self) -> u32;
+
     fn is_blank(&self) -> bool;
 }
 
 impl PokerCard for CKCNumber {
+    fn as_u32(&self) -> u32 {
+        self.0
+    }
+
     fn is_blank(&self) -> bool {
         *self == CardNumber::BLANK
     }
@@ -423,7 +429,7 @@ mod poker_card_tests {
     use super::*;
 
     #[test]
-    fn new() {
+    fn filter() {
         assert_eq!(
             <CKCNumber as PokerCard>::filter(CardNumber::ACE_SPADES),
             CardNumber::ACE_SPADES
