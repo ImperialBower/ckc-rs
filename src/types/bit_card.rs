@@ -50,6 +50,11 @@ impl BitCard {
     }
 
     #[must_use]
+    pub fn get_rank_bits(&self) -> u32 {
+        self.get_rank_bitslice().load_le::<u32>()
+    }
+
+    #[must_use]
     pub fn get_rank_bitslice(&self) -> &BitSlice<u8> {
         &self.0[..16]
     }
@@ -127,13 +132,13 @@ impl BitCard {
     }
 
     #[must_use]
-    pub fn and(&self, bc: &BitSlice<u8>) -> &BitSlice<u8> {
-        self.as_bitslice() | bc
+    pub fn and(&self, bc: BitCard) -> BitCard {
+        BitCard(self.as_bitarray() & bc.as_bitarray())
     }
 
     #[must_use]
-    pub fn or(&self, bc: &BitSlice<u8>) -> &BitSlice<u8> {
-        self.as_bitslice() | bc
+    pub fn or(&self, bc: BitCard) -> BitCard{
+        BitCard(self.as_bitarray() | bc.as_bitarray())
     }
 
     #[must_use]
