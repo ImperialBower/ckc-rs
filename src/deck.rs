@@ -1,11 +1,11 @@
-use crate::{CardNumber, PokerCard};
+use crate::{CKCNumber, CardNumber};
 
 pub const DECK_SIZE: usize = 52;
 
 /// Represents a Standard52 deck as an immutable array of
 /// Cactus Kev Cards (`PokerCard`).
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Deck([PokerCard; DECK_SIZE]);
+pub struct Deck([CKCNumber; DECK_SIZE]);
 
 pub const POKER_DECK: Deck = Deck([
     CardNumber::ACE_SPADES,
@@ -64,7 +64,7 @@ pub const POKER_DECK: Deck = Deck([
 
 impl Deck {
     #[must_use]
-    pub fn get(index: usize) -> PokerCard {
+    pub fn get(index: usize) -> CKCNumber {
         if index < Deck::len() {
             POKER_DECK.0[index]
         } else {
@@ -80,7 +80,7 @@ impl Deck {
 
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod poker_deck_tests {
+mod deck_tests {
     use super::*;
 
     #[test]
