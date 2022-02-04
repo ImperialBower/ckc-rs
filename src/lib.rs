@@ -86,7 +86,7 @@ impl CardNumber {
     //endregion
 
     pub fn filter(number: u32) -> CKCNumber {
-        <CKCNumber as PokerCard>::new(number)
+        <CKCNumber as PokerCard>::filter(number)
     }
 }
 
@@ -351,7 +351,7 @@ mod evaluate_tests {
 
 pub trait PokerCard {
     /// Only allows you to create a `CKCNumber` that is valid.
-    fn new(number: CKCNumber) -> CKCNumber {
+    fn filter(number: CKCNumber) -> CKCNumber {
         match number {
             CardNumber::ACE_SPADES
             | CardNumber::KING_SPADES
@@ -425,14 +425,14 @@ mod poker_card_tests {
     #[test]
     fn new() {
         assert_eq!(
-            <CKCNumber as PokerCard>::new(CardNumber::ACE_SPADES),
+            <CKCNumber as PokerCard>::filter(CardNumber::ACE_SPADES),
             CardNumber::ACE_SPADES
         );
         assert_eq!(
-            <CKCNumber as PokerCard>::new(CardNumber::KING_CLUBS),
+            <CKCNumber as PokerCard>::filter(CardNumber::KING_CLUBS),
             CardNumber::filter(CardNumber::KING_CLUBS)
         );
-        assert_eq!(<CKCNumber as PokerCard>::new(2), CardNumber::BLANK);
+        assert_eq!(<CKCNumber as PokerCard>::filter(2), CardNumber::BLANK);
     }
 
     #[test]
