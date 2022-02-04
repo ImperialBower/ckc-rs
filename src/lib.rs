@@ -2,8 +2,10 @@
 
 extern crate alloc;
 
+use strum::EnumIter;
+
 mod lookups;
-pub mod types;
+pub mod deck;
 
 /// A `PokerCard` is a u32 representation of a variant of Cactus Kev's binary
 /// representation of a poker card as designed for rapid hand evaluation as
@@ -142,7 +144,21 @@ impl CardNumber {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[cfg(test)]
+mod card_number_tests {
+    use super::*;
+
+    #[test]
+    fn filter() {
+        assert_eq!(CardNumber::filter(2), CardNumber::BLANK);
+        assert_eq!(
+            CardNumber::filter(CardNumber::NINE_CLUBS),
+            CardNumber::NINE_CLUBS
+        );
+    }
+}
+
+#[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
 pub enum CardRank {
     ACE,
     KING,
@@ -160,7 +176,7 @@ pub enum CardRank {
     Blank,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
 pub enum CardSuit {
     SPADES,
     HEARTS,
@@ -270,19 +286,14 @@ pub mod evaluate {
     }
 }
 
+pub trait CKC {
+
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use alloc::format;
-
-    #[test]
-    fn filter() {
-        assert_eq!(CardNumber::filter(2), CardNumber::BLANK);
-        assert_eq!(
-            CardNumber::filter(CardNumber::NINE_CLUBS),
-            CardNumber::NINE_CLUBS
-        );
-    }
 
     #[test]
     fn five_cards_royal_flush() {

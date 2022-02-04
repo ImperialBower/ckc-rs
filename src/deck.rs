@@ -84,21 +84,13 @@ mod poker_deck_tests {
     use super::*;
 
     #[test]
-    fn pile() {
-        let pile = Deck::pile();
+    fn get() {
+        for i in 0..Deck::len() {
+            let card = Deck::get(i);
 
-        assert_eq!(pile, cardpack::Pile::french_deck())
-    }
-
-    #[test]
-    fn poker_cards() {
-        let cards = Deck::poker_cards();
-
-        for (i, card) in Deck::iter().enumerate() {
-            let got = cards.get(i);
-            assert!(got.is_some());
-            assert_eq!(got.unwrap(), card);
+            assert_eq!(card, POKER_DECK.0[i]);
         }
-        assert_eq!(cards.len(), Deck::len());
+        assert_eq!(DECK_SIZE, Deck::len());
+        assert_eq!(Deck::get(Deck::len()), CardNumber::BLANK);
     }
 }
