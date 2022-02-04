@@ -2,6 +2,9 @@
 
 extern crate alloc;
 
+use strum::EnumIter;
+
+pub mod deck;
 mod lookups;
 
 /// A `PokerCard` is a u32 representation of a variant of Cactus Kev's binary
@@ -19,7 +22,7 @@ mod lookups;
 /// SHDC = suit of card (bit turned on based on suit of card)
 /// b = bit turned on depending on rank of card
 /// ```
-pub type PokerCard = u32;
+pub type CKCNumber = u32;
 pub type HandRankValue = u16;
 
 /// u32 constants for all 52 cards in a standard poker deck.
@@ -82,67 +85,54 @@ impl CardNumber {
     pub const BLANK: u32 = 0;
     //endregion
 
-    pub fn filter(number: u32) -> PokerCard {
-        match number {
-            CardNumber::ACE_SPADES
-            | CardNumber::KING_SPADES
-            | CardNumber::QUEEN_SPADES
-            | CardNumber::JACK_SPADES
-            | CardNumber::TEN_SPADES
-            | CardNumber::NINE_SPADES
-            | CardNumber::EIGHT_SPADES
-            | CardNumber::SEVEN_SPADES
-            | CardNumber::SIX_SPADES
-            | CardNumber::FIVE_SPADES
-            | CardNumber::FOUR_SPADES
-            | CardNumber::TREY_SPADES
-            | CardNumber::DEUCE_SPADES
-            | CardNumber::ACE_HEARTS
-            | CardNumber::KING_HEARTS
-            | CardNumber::QUEEN_HEARTS
-            | CardNumber::JACK_HEARTS
-            | CardNumber::TEN_HEARTS
-            | CardNumber::NINE_HEARTS
-            | CardNumber::EIGHT_HEARTS
-            | CardNumber::SEVEN_HEARTS
-            | CardNumber::SIX_HEARTS
-            | CardNumber::FIVE_HEARTS
-            | CardNumber::FOUR_HEARTS
-            | CardNumber::TREY_HEARTS
-            | CardNumber::DEUCE_HEARTS
-            | CardNumber::ACE_DIAMONDS
-            | CardNumber::KING_DIAMONDS
-            | CardNumber::QUEEN_DIAMONDS
-            | CardNumber::JACK_DIAMONDS
-            | CardNumber::TEN_DIAMONDS
-            | CardNumber::NINE_DIAMONDS
-            | CardNumber::EIGHT_DIAMONDS
-            | CardNumber::SEVEN_DIAMONDS
-            | CardNumber::SIX_DIAMONDS
-            | CardNumber::FIVE_DIAMONDS
-            | CardNumber::FOUR_DIAMONDS
-            | CardNumber::TREY_DIAMONDS
-            | CardNumber::DEUCE_DIAMONDS
-            | CardNumber::ACE_CLUBS
-            | CardNumber::KING_CLUBS
-            | CardNumber::QUEEN_CLUBS
-            | CardNumber::JACK_CLUBS
-            | CardNumber::TEN_CLUBS
-            | CardNumber::NINE_CLUBS
-            | CardNumber::EIGHT_CLUBS
-            | CardNumber::SEVEN_CLUBS
-            | CardNumber::SIX_CLUBS
-            | CardNumber::FIVE_CLUBS
-            | CardNumber::FOUR_CLUBS
-            | CardNumber::TREY_CLUBS
-            | CardNumber::DEUCE_CLUBS => number,
-            _ => CardNumber::BLANK,
-        }
+    pub fn filter(number: u32) -> CKCNumber {
+        <CKCNumber as PokerCard>::filter(number)
     }
 }
 
+#[cfg(test)]
+mod card_number_tests {
+    use super::*;
+
+    #[test]
+    fn filter() {
+        assert_eq!(CardNumber::filter(2), CardNumber::BLANK);
+        assert_eq!(
+            CardNumber::filter(CardNumber::NINE_CLUBS),
+            CardNumber::NINE_CLUBS
+        );
+    }
+}
+
+#[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
+pub enum CardRank {
+    ACE,
+    KING,
+    QUEEN,
+    JACK,
+    TEN,
+    NINE,
+    EIGHT,
+    SEVEN,
+    SIX,
+    FIVE,
+    FOUR,
+    THREE,
+    TWO,
+    Blank,
+}
+
+#[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
+pub enum CardSuit {
+    SPADES,
+    HEARTS,
+    DIAMONDS,
+    CLUBS,
+    Blank,
+}
+
 pub mod evaluate {
-    use crate::{CardNumber, HandRankValue, PokerCard};
+    use crate::{CKCNumber, CardNumber, HandRankValue};
 
     pub const POSSIBLE_COMBINATIONS: usize = 7937;
     /// Binary filter for `CardNumber` `Suit` flags.
@@ -150,7 +140,7 @@ pub mod evaluate {
     pub const SUITS_FILTER: u32 = 0xf000;
 
     #[must_use]
-    pub fn five_cards(five_cards: [PokerCard; 5]) -> HandRankValue {
+    pub fn five_cards(five_cards: [CKCNumber; 5]) -> HandRankValue {
         if is_corrupt(five_cards) || has_dupes(five_cards) {
             return CardNumber::BLANK as HandRankValue;
         }
@@ -170,7 +160,7 @@ pub mod evaluate {
     }
 
     #[must_use]
-    pub fn is_flush(five_cards: [PokerCard; 5]) -> bool {
+    pub fn is_flush(five_cards: [CKCNumber; 5]) -> bool {
         (five_cards[0]
             & five_cards[1]
             & five_cards[2]
@@ -183,7 +173,7 @@ pub mod evaluate {
     /// Returns a value that is made up of performing an or operation on all of the
     /// rank bit flags of the `PokerCard`.
     #[must_use]
-    pub fn or_rank_bits(five_cards: [PokerCard; 5]) -> usize {
+    pub fn or_rank_bits(five_cards: [CKCNumber; 5]) -> usize {
         ((five_cards[0] | five_cards[1] | five_cards[2] | five_cards[3] | five_cards[4]) as usize)
             >> 16
     }
@@ -209,11 +199,11 @@ pub mod evaluate {
         0
     }
 
-    fn has_dupes(c: [PokerCard; 5]) -> bool {
+    fn has_dupes(c: [CKCNumber; 5]) -> bool {
         (1..5).any(|i| c[i..].contains(&c[i - 1]))
     }
 
-    fn is_corrupt(c: [PokerCard; 5]) -> bool {
+    fn is_corrupt(c: [CKCNumber; 5]) -> bool {
         for x in &c {
             if CardNumber::filter(*x) == CardNumber::BLANK {
                 return true;
@@ -222,7 +212,7 @@ pub mod evaluate {
         false
     }
 
-    fn multiply_primes(five_cards: [PokerCard; 5]) -> usize {
+    fn multiply_primes(five_cards: [CKCNumber; 5]) -> usize {
         ((five_cards[0] & 0xff)
             * (five_cards[1] & 0xff)
             * (five_cards[2] & 0xff)
@@ -230,7 +220,7 @@ pub mod evaluate {
             * (five_cards[4] & 0xff)) as usize
     }
 
-    fn not_unique(five_cards: [PokerCard; 5]) -> HandRankValue {
+    fn not_unique(five_cards: [CKCNumber; 5]) -> HandRankValue {
         crate::lookups::VALUES[find_in_products(multiply_primes(five_cards))]
     }
 
@@ -243,18 +233,9 @@ pub mod evaluate {
 }
 
 #[cfg(test)]
-mod tests {
-    use alloc::format;
+mod evaluate_tests {
     use super::*;
-
-    #[test]
-    fn filter() {
-        assert_eq!(CardNumber::filter(2), CardNumber::BLANK);
-        assert_eq!(
-            CardNumber::filter(CardNumber::NINE_CLUBS),
-            CardNumber::NINE_CLUBS
-        );
-    }
+    use alloc::format;
 
     #[test]
     fn five_cards_royal_flush() {
@@ -365,5 +346,101 @@ mod tests {
         ];
         assert_eq!(evaluate::five_cards(first), 0);
         assert_eq!(evaluate::five_cards(second), 0);
+    }
+}
+
+pub trait PokerCard {
+    /// Only allows you to create a `CKCNumber` that is valid.
+    fn filter(number: CKCNumber) -> CKCNumber {
+        match number {
+            CardNumber::ACE_SPADES
+            | CardNumber::KING_SPADES
+            | CardNumber::QUEEN_SPADES
+            | CardNumber::JACK_SPADES
+            | CardNumber::TEN_SPADES
+            | CardNumber::NINE_SPADES
+            | CardNumber::EIGHT_SPADES
+            | CardNumber::SEVEN_SPADES
+            | CardNumber::SIX_SPADES
+            | CardNumber::FIVE_SPADES
+            | CardNumber::FOUR_SPADES
+            | CardNumber::TREY_SPADES
+            | CardNumber::DEUCE_SPADES
+            | CardNumber::ACE_HEARTS
+            | CardNumber::KING_HEARTS
+            | CardNumber::QUEEN_HEARTS
+            | CardNumber::JACK_HEARTS
+            | CardNumber::TEN_HEARTS
+            | CardNumber::NINE_HEARTS
+            | CardNumber::EIGHT_HEARTS
+            | CardNumber::SEVEN_HEARTS
+            | CardNumber::SIX_HEARTS
+            | CardNumber::FIVE_HEARTS
+            | CardNumber::FOUR_HEARTS
+            | CardNumber::TREY_HEARTS
+            | CardNumber::DEUCE_HEARTS
+            | CardNumber::ACE_DIAMONDS
+            | CardNumber::KING_DIAMONDS
+            | CardNumber::QUEEN_DIAMONDS
+            | CardNumber::JACK_DIAMONDS
+            | CardNumber::TEN_DIAMONDS
+            | CardNumber::NINE_DIAMONDS
+            | CardNumber::EIGHT_DIAMONDS
+            | CardNumber::SEVEN_DIAMONDS
+            | CardNumber::SIX_DIAMONDS
+            | CardNumber::FIVE_DIAMONDS
+            | CardNumber::FOUR_DIAMONDS
+            | CardNumber::TREY_DIAMONDS
+            | CardNumber::DEUCE_DIAMONDS
+            | CardNumber::ACE_CLUBS
+            | CardNumber::KING_CLUBS
+            | CardNumber::QUEEN_CLUBS
+            | CardNumber::JACK_CLUBS
+            | CardNumber::TEN_CLUBS
+            | CardNumber::NINE_CLUBS
+            | CardNumber::EIGHT_CLUBS
+            | CardNumber::SEVEN_CLUBS
+            | CardNumber::SIX_CLUBS
+            | CardNumber::FIVE_CLUBS
+            | CardNumber::FOUR_CLUBS
+            | CardNumber::TREY_CLUBS
+            | CardNumber::DEUCE_CLUBS => number,
+            _ => CardNumber::BLANK,
+        }
+    }
+
+    fn is_blank(&self) -> bool;
+}
+
+impl PokerCard for CKCNumber {
+    fn is_blank(&self) -> bool {
+        *self == CardNumber::BLANK
+    }
+}
+
+#[cfg(test)]
+mod poker_card_tests {
+    use super::*;
+
+    #[test]
+    fn new() {
+        assert_eq!(
+            <CKCNumber as PokerCard>::filter(CardNumber::ACE_SPADES),
+            CardNumber::ACE_SPADES
+        );
+        assert_eq!(
+            <CKCNumber as PokerCard>::filter(CardNumber::KING_CLUBS),
+            CardNumber::filter(CardNumber::KING_CLUBS)
+        );
+        assert_eq!(<CKCNumber as PokerCard>::filter(2), CardNumber::BLANK);
+    }
+
+    #[test]
+    fn is_blank() {
+        let card = CardNumber::BLANK;
+
+        assert!(card.is_blank());
+        assert!(0_u32.is_blank());
+        assert!(0.is_blank());
     }
 }
