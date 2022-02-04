@@ -64,6 +64,11 @@ pub const POKER_DECK: Deck = Deck([
 
 impl Deck {
     #[must_use]
+    pub fn arr(&self) -> [CKCNumber; DECK_SIZE] {
+        self.0
+    }
+
+    #[must_use]
     pub fn get(index: usize) -> CKCNumber {
         if index < Deck::len() {
             POKER_DECK.0[index]
@@ -82,6 +87,17 @@ impl Deck {
 #[allow(non_snake_case)]
 mod deck_tests {
     use super::*;
+
+    #[test]
+    fn arr() {
+        for i in 0..Deck::len() {
+            let card = Deck::get(i);
+
+            assert_eq!(card, POKER_DECK.arr()[i]);
+        }
+        assert_eq!(DECK_SIZE, Deck::len());
+        assert_eq!(Deck::get(Deck::len()), CardNumber::BLANK);
+    }
 
     #[test]
     fn get() {
