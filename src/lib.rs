@@ -1,4 +1,6 @@
 #![no_std]
+#![warn(clippy::pedantic)]
+#![allow(clippy::unreadable_literal)]
 
 extern crate alloc;
 
@@ -29,7 +31,16 @@ pub type HandRankValue = u16;
 pub struct CardNumber;
 
 impl CardNumber {
-    //region constants
+    pub const RANK_FILTER: u32 = 0x1FFF0000; // 536805376 aka 0b00011111_11111111_00000000_00000000
+    pub const RANK_SHIFT: u32 = 16;
+
+    /// Binary filter for `CardNumber` `Suit` flags.
+    /// 00000000 00000000 11110000 00000000
+    pub const SUIT_FILTER: u32 = 0xF000; // 61440 aka 0b11110000_00000000
+    pub const SUIT_SHORT_MASK: u32 = 0b1111;
+    pub const SUIT_SHIFT: u32 = 12;
+
+    //region cardnumbers
     pub const ACE_SPADES: u32 = 268_471_337;
     pub const KING_SPADES: u32 = 134_253_349;
     pub const QUEEN_SPADES: u32 = 67_144_223;
@@ -85,6 +96,7 @@ impl CardNumber {
     pub const BLANK: u32 = 0;
     //endregion
 
+    #[must_use]
     pub fn filter(number: u32) -> CKCNumber {
         <CKCNumber as PokerCard>::filter(number)
     }
@@ -119,7 +131,7 @@ pub enum CardRank {
     FOUR,
     THREE,
     TWO,
-    Blank,
+    BLANK,
 }
 
 #[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
@@ -128,18 +140,16 @@ pub enum CardSuit {
     HEARTS,
     DIAMONDS,
     CLUBS,
-    Blank,
+    BLANK,
 }
 
 pub mod evaluate {
     use crate::{CKCNumber, CardNumber, HandRankValue};
 
     pub const POSSIBLE_COMBINATIONS: usize = 7937;
-    /// Binary filter for `CardNumber` `Suit` flags.
-    /// 00000000 00000000 11110000 00000000
-    pub const SUITS_FILTER: u32 = 0xf000;
 
     #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn five_cards(five_cards: [CKCNumber; 5]) -> HandRankValue {
         if is_corrupt(five_cards) || has_dupes(five_cards) {
             return CardNumber::BLANK as HandRankValue;
@@ -166,7 +176,7 @@ pub mod evaluate {
             & five_cards[2]
             & five_cards[3]
             & five_cards[4]
-            & SUITS_FILTER)
+            & CardNumber::SUIT_FILTER)
             != 0
     }
 
@@ -224,6 +234,7 @@ pub mod evaluate {
         crate::lookups::VALUES[find_in_products(multiply_primes(five_cards))]
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn unique(index: usize) -> HandRankValue {
         if index > POSSIBLE_COMBINATIONS {
             return CardNumber::BLANK as HandRankValue;
@@ -351,6 +362,7 @@ mod evaluate_tests {
 
 pub trait PokerCard {
     /// Only allows you to create a `CKCNumber` that is valid.
+    #[must_use]
     fn filter(number: CKCNumber) -> CKCNumber {
         match number {
             CardNumber::ACE_SPADES
@@ -411,6 +423,51 @@ pub trait PokerCard {
 
     fn as_u32(&self) -> u32;
 
+    fn get_card_rank(&self) -> CardRank {
+        match self.get_rank_bit() {
+            4096 => CardRank::ACE,
+            2048 => CardRank::KING,
+            1024 => CardRank::QUEEN,
+            512 => CardRank::JACK,
+            256 => CardRank::TEN,
+            128 => CardRank::NINE,
+            64 => CardRank::EIGHT,
+            32 => CardRank::SEVEN,
+            16 => CardRank::SIX,
+            8 => CardRank::FIVE,
+            4 => CardRank::FOUR,
+            2 => CardRank::THREE,
+            1 => CardRank::TWO,
+            _ => CardRank::BLANK,
+        }
+    }
+
+    fn get_card_suit(&self) -> CardSuit {
+        match self.get_suit_bit() {
+            8 => CardSuit::SPADES,
+            4 => CardSuit::HEARTS,
+            2 => CardSuit::DIAMONDS,
+            1 => CardSuit::CLUBS,
+            _ => CardSuit::BLANK,
+        }
+    }
+
+    fn get_rank_bit(&self) -> u32 {
+        self.get_rank_flag() >> CardNumber::RANK_SHIFT
+    }
+
+    fn get_rank_flag(&self) -> u32 {
+        self.as_u32() & CardNumber::RANK_FILTER
+    }
+
+    fn get_suit_bit(&self) -> u32 {
+        self.get_suit_flag() >> CardNumber::SUIT_SHIFT
+    }
+
+    fn get_suit_flag(&self) -> u32 {
+        self.as_u32() & CardNumber::SUIT_FILTER
+    }
+
     fn is_blank(&self) -> bool;
 }
 
@@ -439,6 +496,130 @@ mod poker_card_tests {
             CardNumber::filter(CardNumber::KING_CLUBS)
         );
         assert_eq!(<CKCNumber as PokerCard>::filter(2), CardNumber::BLANK);
+    }
+
+    #[test]
+    fn get_rank() {
+        let card = CardNumber::ACE_CLUBS as CKCNumber;
+        assert_eq!(0b00010000_00000000, card.get_rank_bit());
+        assert_eq!(CardRank::ACE, card.get_card_rank());
+
+        let card = CardNumber::KING_DIAMONDS as CKCNumber;
+        assert_eq!(0b00001000_00000000, card.get_rank_bit());
+        assert_eq!(CardRank::KING, card.get_card_rank());
+
+        let card = CardNumber::QUEEN_SPADES as CKCNumber;
+        assert_eq!(0b00000100_00000000, card.get_rank_bit());
+        assert_eq!(CardRank::QUEEN, card.get_card_rank());
+
+        let card = CardNumber::JACK_HEARTS as CKCNumber;
+        assert_eq!(0b00000010_00000000, card.get_rank_bit());
+        assert_eq!(CardRank::JACK, card.get_card_rank());
+
+        let card = CardNumber::TEN_SPADES as CKCNumber;
+        assert_eq!(0b00000001_00000000, card.get_rank_bit());
+        assert_eq!(CardRank::TEN, card.get_card_rank());
+
+        let card = CardNumber::NINE_HEARTS as CKCNumber;
+        assert_eq!(0b00000000_10000000, card.get_rank_bit());
+        assert_eq!(CardRank::NINE, card.get_card_rank());
+
+        let card = CardNumber::EIGHT_DIAMONDS as CKCNumber;
+        assert_eq!(0b00000000_01000000, card.get_rank_bit());
+        assert_eq!(CardRank::EIGHT, card.get_card_rank());
+
+        let card = CardNumber::SEVEN_CLUBS as CKCNumber;
+        assert_eq!(0b00000000_00100000, card.get_rank_bit());
+        assert_eq!(CardRank::SEVEN, card.get_card_rank());
+
+        let card = CardNumber::SIX_SPADES as CKCNumber;
+        assert_eq!(0b00000000_00010000, card.get_rank_bit());
+        assert_eq!(CardRank::SIX, card.get_card_rank());
+
+        let card = CardNumber::FIVE_HEARTS as CKCNumber;
+        assert_eq!(0b00000000_00001000, card.get_rank_bit());
+        assert_eq!(CardRank::FIVE, card.get_card_rank());
+
+        let card = CardNumber::FOUR_DIAMONDS as CKCNumber;
+        assert_eq!(0b00000000_00000100, card.get_rank_bit());
+        assert_eq!(CardRank::FOUR, card.get_card_rank());
+
+        let card = CardNumber::TREY_CLUBS as CKCNumber;
+        assert_eq!(0b00000000_00000010, card.get_rank_bit());
+        assert_eq!(CardRank::THREE, card.get_card_rank());
+
+        let card = CardNumber::DEUCE_SPADES as CKCNumber;
+        assert_eq!(0b00000000_00000001, card.get_rank_bit());
+        assert_eq!(CardRank::TWO, card.get_card_rank());
+
+        let card = CardNumber::BLANK as CKCNumber;
+        assert_eq!(0b00000000_00000000, card.get_rank_bit());
+        assert_eq!(CardRank::BLANK, card.get_card_rank());
+        assert_eq!(CardSuit::BLANK, card.get_card_suit());
+    }
+
+    #[test]
+    fn get_rank_flag() {
+        let card = CardNumber::ACE_CLUBS as CKCNumber;
+        assert_eq!(0b00010000_00000000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::KING_DIAMONDS as CKCNumber;
+        assert_eq!(0b00001000_00000000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::QUEEN_SPADES as CKCNumber;
+        assert_eq!(0b00000100_00000000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::JACK_HEARTS as CKCNumber;
+        assert_eq!(0b00000010_00000000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::TEN_SPADES as CKCNumber;
+        assert_eq!(0b00000001_00000000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::NINE_HEARTS as CKCNumber;
+        assert_eq!(0b00000000_10000000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::EIGHT_DIAMONDS as CKCNumber;
+        assert_eq!(0b00000000_01000000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::SEVEN_CLUBS as CKCNumber;
+        assert_eq!(0b00000000_00100000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::SIX_SPADES as CKCNumber;
+        assert_eq!(0b00000000_00010000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::FIVE_HEARTS as CKCNumber;
+        assert_eq!(0b00000000_00001000_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::FOUR_DIAMONDS as CKCNumber;
+        assert_eq!(0b00000000_00000100_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::TREY_CLUBS as CKCNumber;
+        assert_eq!(0b00000000_00000010_00000000_00000000, card.get_rank_flag());
+        let card = CardNumber::DEUCE_SPADES as CKCNumber;
+        assert_eq!(0b00000000_00000001_00000000_00000000, card.get_rank_flag());
+    }
+
+    #[test]
+    fn get_suit_bit() {
+        let card = CardNumber::SEVEN_SPADES as CKCNumber;
+        assert_eq!(0b1000, card.get_suit_bit());
+        assert_eq!(CardSuit::SPADES, card.get_card_suit());
+
+        let card = CardNumber::SEVEN_HEARTS as CKCNumber;
+        assert_eq!(0b0100, card.get_suit_bit());
+        assert_eq!(CardSuit::HEARTS, card.get_card_suit());
+
+        let card = CardNumber::SEVEN_DIAMONDS as CKCNumber;
+        assert_eq!(0b0010, card.get_suit_bit());
+        assert_eq!(CardSuit::DIAMONDS, card.get_card_suit());
+
+        let card = CardNumber::SEVEN_CLUBS as CKCNumber;
+        assert_eq!(0b0001, card.get_suit_bit());
+        assert_eq!(CardSuit::CLUBS, card.get_card_suit());
+    }
+
+    #[test]
+    fn get_suit_flag() {
+        let card = CardNumber::SEVEN_SPADES as CKCNumber;
+        assert_eq!(0b10000000_00000000, card.get_suit_flag());
+
+        let card = CardNumber::SEVEN_HEARTS as CKCNumber;
+        assert_eq!(0b01000000_00000000, card.get_suit_flag());
+
+        let card = CardNumber::SEVEN_DIAMONDS as CKCNumber;
+        assert_eq!(0b00100000_00000000, card.get_suit_flag());
+
+        let card = CardNumber::SEVEN_CLUBS as CKCNumber;
+        assert_eq!(0b00010000_00000000, card.get_suit_flag());
     }
 
     #[test]
