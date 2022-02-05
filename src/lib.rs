@@ -31,8 +31,8 @@ pub type HandRankValue = u16;
 pub struct CardNumber;
 
 impl CardNumber {
-    pub const RANK_FILTER: u32 = 0x1FFF0000; // 536805376 aka 0b00011111_11111111_00000000_00000000
-    pub const RANK_SHIFT: u32 = 16;
+    pub const RANK_FLAG_FILTER: u32 = 0x1FFF0000; // 536805376 aka 0b00011111_11111111_00000000_00000000
+    pub const RANK_FLAG_SHIFT: u32 = 16;
 
     /// Binary filter for `CardNumber` `Suit` flags.
     /// 00000000 00000000 11110000 00000000
@@ -453,15 +453,44 @@ pub trait PokerCard {
     }
 
     fn get_rank_bit(&self) -> u32 {
-        self.get_rank_flag() >> CardNumber::RANK_SHIFT
+        self.get_rank_flag() >> CardNumber::RANK_FLAG_SHIFT
+    }
+
+    fn get_rank_char(&self) -> char {
+        match self.get_rank_bit() {
+            4096 => 'A',
+            2048 => 'K',
+            1024 => 'Q',
+            512 => 'J',
+            256 => 'T',
+            128 => '9',
+            64 => '8',
+            32 => '7',
+            16 => '6',
+            8 => '5',
+            4 => '4',
+            2 => '3',
+            1 => '2',
+            _ => '_',
+        }
     }
 
     fn get_rank_flag(&self) -> u32 {
-        self.as_u32() & CardNumber::RANK_FILTER
+        self.as_u32() & CardNumber::RANK_FLAG_FILTER
     }
 
     fn get_suit_bit(&self) -> u32 {
         self.get_suit_flag() >> CardNumber::SUIT_SHIFT
+    }
+
+    fn get_suit_char(&self) -> char {
+        match self.get_suit_bit() {
+            8 => '♠',
+            4 => '♥',
+            2 => '♦',
+            1 => '♣',
+            _ => '_',
+        }
     }
 
     fn get_suit_flag(&self) -> u32 {
