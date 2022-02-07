@@ -493,6 +493,16 @@ pub trait PokerCard {
         }
     }
 
+    fn get_suit_letter(&self) -> char {
+        match self.get_suit_bit() {
+            8 => 'S',
+            4 => 'H',
+            2 => 'D',
+            1 => 'C',
+            _ => '_',
+        }
+    }
+
     fn get_suit_flag(&self) -> u32 {
         self.as_u32() & CardNumber::SUIT_FILTER
     }
