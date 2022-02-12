@@ -390,7 +390,7 @@ pub enum HandRankClass {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod hand_rank_tests {
-    use super::*;
+    // use super::*;
 
     mod hand_rank_name_test {
         use crate::hand_rank::HandRankName;
