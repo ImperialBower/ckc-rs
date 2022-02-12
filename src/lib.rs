@@ -1,4 +1,4 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::unreadable_literal)]
 
@@ -7,6 +7,7 @@ extern crate alloc;
 use strum::EnumIter;
 
 pub mod deck;
+pub mod hand_rank;
 mod lookups;
 
 /// A `PokerCard` is a u32 representation of a variant of Cactus Kev's binary
@@ -25,7 +26,6 @@ mod lookups;
 /// b = bit turned on depending on rank of card
 /// ```
 pub type CKCNumber = u32;
-pub type HandRankValue = u16;
 
 /// u32 constants for all 52 cards in a standard poker deck.
 pub struct CardNumber;
@@ -145,7 +145,8 @@ pub enum CardSuit {
 }
 
 pub mod evaluate {
-    use crate::{CKCNumber, CardNumber, HandRankValue};
+    use crate::hand_rank::HandRankValue;
+    use crate::{CKCNumber, CardNumber};
 
     pub const POSSIBLE_COMBINATIONS: usize = 7937;
 
@@ -513,6 +514,37 @@ pub trait PokerCard {
     }
 
     fn is_blank(&self) -> bool;
+
+    #[must_use]
+    fn match_rank(index: char) -> CardRank {
+        match index {
+            'A' | 'a' => CardRank::ACE,
+            'K' | 'k' => CardRank::KING,
+            'Q' | 'q' => CardRank::QUEEN,
+            'J' | 'j' => CardRank::JACK,
+            'T' | 't' | '0' => CardRank::TEN,
+            '9' => CardRank::NINE,
+            '8' => CardRank::EIGHT,
+            '7' => CardRank::SEVEN,
+            '6' => CardRank::SIX,
+            '5' => CardRank::FIVE,
+            '4' => CardRank::FOUR,
+            '3' => CardRank::THREE,
+            '2' => CardRank::TWO,
+            _ => CardRank::BLANK,
+        }
+    }
+
+    #[must_use]
+    fn match_suit(symbol: char) -> CardSuit {
+        match symbol {
+            '♤' | '♠' | 'S' | 's' => CardSuit::SPADES,
+            '♡' | '♥' | 'H' | 'h' => CardSuit::HEARTS,
+            '♢' | '♦' | 'D' | 'd' => CardSuit::DIAMONDS,
+            '♧' | '♣' | 'C' | 'c' => CardSuit::CLUBS,
+            _ => CardSuit::BLANK,
+        }
+    }
 }
 
 impl PokerCard for CKCNumber {
@@ -528,6 +560,7 @@ impl PokerCard for CKCNumber {
 #[cfg(test)]
 mod poker_card_tests {
     use super::*;
+    use rstest::rstest;
 
     #[test]
     fn filter() {
@@ -686,5 +719,59 @@ mod poker_card_tests {
         assert!(card.is_blank());
         assert!(0_u32.is_blank());
         assert!(0.is_blank());
+    }
+
+    #[rstest]
+    #[case('A', CardRank::ACE)]
+    #[case('a', CardRank::ACE)]
+    #[case('K', CardRank::KING)]
+    #[case('k', CardRank::KING)]
+    #[case('Q', CardRank::QUEEN)]
+    #[case('q', CardRank::QUEEN)]
+    #[case('J', CardRank::JACK)]
+    #[case('j', CardRank::JACK)]
+    #[case('T', CardRank::TEN)]
+    #[case('t', CardRank::TEN)]
+    #[case('0', CardRank::TEN)]
+    #[case('9', CardRank::NINE)]
+    #[case('8', CardRank::EIGHT)]
+    #[case('7', CardRank::SEVEN)]
+    #[case('6', CardRank::SIX)]
+    #[case('5', CardRank::FIVE)]
+    #[case('4', CardRank::FOUR)]
+    #[case('3', CardRank::THREE)]
+    #[case('2', CardRank::TWO)]
+    #[case('_', CardRank::BLANK)]
+    #[case(' ', CardRank::BLANK)]
+    fn match_rank(#[case] input: char, #[case] expected: CardRank) {
+        assert_eq!(expected, CKCNumber::match_rank(input));
+    }
+
+    #[rstest]
+    #[case('♠', CardSuit::SPADES)]
+    #[case('S', CardSuit::SPADES)]
+    #[case('s', CardSuit::SPADES)]
+    #[case('♥', CardSuit::HEARTS)]
+    #[case('H', CardSuit::HEARTS)]
+    #[case('h', CardSuit::HEARTS)]
+    #[case('♦', CardSuit::DIAMONDS)]
+    #[case('D', CardSuit::DIAMONDS)]
+    #[case('d', CardSuit::DIAMONDS)]
+    #[case('♣', CardSuit::CLUBS)]
+    #[case('C', CardSuit::CLUBS)]
+    #[case('c', CardSuit::CLUBS)]
+    #[case(' ', CardSuit::BLANK)]
+    #[case('F', CardSuit::BLANK)]
+    fn match_suit(#[case] input: char, #[case] expected: CardSuit) {
+        assert_eq!(expected, CKCNumber::match_suit(input));
+    }
+
+    #[test]
+    fn scratch() {
+        let index = "A♠";
+        let mut chars = index.chars();
+
+        assert_eq!('A', chars.next().unwrap());
+        assert_eq!('♠', chars.next().unwrap());
     }
 }
