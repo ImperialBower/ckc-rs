@@ -8,6 +8,20 @@ pub struct Five([CKCNumber; 5]);
 
 impl Five {
     #[must_use]
+    pub fn sort(&self) -> Five {
+        let mut array = self.clone();
+        array.sort_in_place();
+        array
+    }
+
+    pub fn sort_in_place(&mut self) {
+        self.0.sort_unstable();
+        self.0.reverse();
+    }
+
+    //region accessors
+
+    #[must_use]
     pub fn first(&self) -> CKCNumber {
         self.0[0]
     }
@@ -57,6 +71,8 @@ impl Five {
         self.0
     }
 
+    //endregion
+
     fn from_index(index: &str) -> Option<[CKCNumber; 5]> {
         let mut esses = index.split_whitespace();
 
@@ -92,6 +108,15 @@ impl TryFrom<&'static str> for Five {
 mod cards_five_tests {
     use super::*;
     use crate::CardNumber;
+
+    #[test]
+    fn sort() {
+        let five = Five::try_from("KC QD A♠ 9h T♠").unwrap().sort();
+
+        let expected = Five::try_from("A♠ KC QD T♠ 9h").unwrap();
+
+        assert_eq!(five, expected);
+    }
 
     #[test]
     fn default() {
