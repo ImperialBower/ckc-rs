@@ -7,6 +7,7 @@ edition = "2021"
 license = "MIT"
 repository = "https://github.com/ContractBridge/ckc-rs.git"
 homepage = "https://github.com/ContractBridge/ckc-rs"
+exclude = [".github/workflows/*", ".gitignore", "Cargo.lock"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
