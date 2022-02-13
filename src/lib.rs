@@ -4,6 +4,7 @@
 
 extern crate alloc;
 
+use crate::parse::get_rank_and_suit;
 use strum::EnumIter;
 
 pub mod deck;
@@ -156,6 +157,51 @@ impl CardRank {
             _ => CardRank::BLANK,
         }
     }
+
+    fn bits(self) -> u32 {
+        1 << (16 + self.number())
+    }
+
+    fn number(self) -> u32 {
+        match self {
+            CardRank::ACE => 12,
+            CardRank::KING => 11,
+            CardRank::QUEEN => 10,
+            CardRank::JACK => 9,
+            CardRank::TEN => 8,
+            CardRank::NINE => 7,
+            CardRank::EIGHT => 6,
+            CardRank::SEVEN => 5,
+            CardRank::SIX => 4,
+            CardRank::FIVE => 3,
+            CardRank::FOUR => 2,
+            CardRank::THREE => 1,
+            _ => 0,
+        }
+    }
+
+    fn prime(self) -> u32 {
+        match self {
+            CardRank::ACE => 41,
+            CardRank::KING => 37,
+            CardRank::QUEEN => 31,
+            CardRank::JACK => 29,
+            CardRank::TEN => 23,
+            CardRank::NINE => 19,
+            CardRank::EIGHT => 17,
+            CardRank::SEVEN => 13,
+            CardRank::SIX => 11,
+            CardRank::FIVE => 7,
+            CardRank::FOUR => 5,
+            CardRank::THREE => 3,
+            CardRank::TWO => 2,
+            CardRank::BLANK => 0,
+        }
+    }
+
+    fn shift8(self) -> u32 {
+        self.number() << 8
+    }
 }
 
 #[cfg(test)]
@@ -200,6 +246,7 @@ pub enum CardSuit {
 }
 
 impl CardSuit {
+    #[must_use]
     pub fn binary_signature(&self) -> u32 {
         match self {
             CardSuit::SPADES => 0x8000,
@@ -221,7 +268,6 @@ impl CardSuit {
         }
     }
 }
-
 
 #[cfg(test)]
 mod card_suit_tests {
@@ -478,6 +524,11 @@ mod evaluate_tests {
 pub trait PokerCard {
     //region static
 
+    #[must_use]
+    fn create(rank: CardRank, suit: CardSuit) -> CKCNumber {
+        CKCNumber::filter(rank.bits() | rank.prime() | rank.shift8() | suit.binary_signature())
+    }
+
     /// Only allows you to create a `CKCNumber` that is valid.
     #[must_use]
     fn filter(number: CKCNumber) -> CKCNumber {
@@ -536,6 +587,12 @@ pub trait PokerCard {
             | CardNumber::DEUCE_CLUBS => number,
             _ => CardNumber::BLANK,
         }
+    }
+
+    #[must_use]
+    fn from_index(index: &str) -> CKCNumber {
+        let (rank, suit) = get_rank_and_suit(index);
+        CKCNumber::create(rank, suit)
     }
 
     //endregion
@@ -646,6 +703,7 @@ impl PokerCard for CKCNumber {
 #[cfg(test)]
 mod poker_card_tests {
     use super::*;
+    use rstest::rstest;
 
     #[test]
     fn filter() {
@@ -658,6 +716,63 @@ mod poker_card_tests {
             CardNumber::filter(CardNumber::KING_CLUBS)
         );
         assert_eq!(<CKCNumber as PokerCard>::filter(2), CardNumber::BLANK);
+    }
+
+    #[rstest]
+    #[case("A♠", CardNumber::ACE_SPADES)]
+    #[case("ks", CardNumber::KING_SPADES)]
+    #[case("QS", CardNumber::QUEEN_SPADES)]
+    #[case("J♠", CardNumber::JACK_SPADES)]
+    #[case("TS", CardNumber::TEN_SPADES)]
+    #[case("9s", CardNumber::NINE_SPADES)]
+    #[case("8♠", CardNumber::EIGHT_SPADES)]
+    #[case("7S", CardNumber::SEVEN_SPADES)]
+    #[case("6♠", CardNumber::SIX_SPADES)]
+    #[case("5S", CardNumber::FIVE_SPADES)]
+    #[case("4♠", CardNumber::FOUR_SPADES)]
+    #[case("3s", CardNumber::TREY_SPADES)]
+    #[case("2S", CardNumber::DEUCE_SPADES)]
+    #[case("A♥", CardNumber::ACE_HEARTS)]
+    #[case("k♥", CardNumber::KING_HEARTS)]
+    #[case("QH", CardNumber::QUEEN_HEARTS)]
+    #[case("jh", CardNumber::JACK_HEARTS)]
+    #[case("T♥", CardNumber::TEN_HEARTS)]
+    #[case("9♥", CardNumber::NINE_HEARTS)]
+    #[case("8h", CardNumber::EIGHT_HEARTS)]
+    #[case("7H", CardNumber::SEVEN_HEARTS)]
+    #[case("6h", CardNumber::SIX_HEARTS)]
+    #[case("5H", CardNumber::FIVE_HEARTS)]
+    #[case("4♥", CardNumber::FOUR_HEARTS)]
+    #[case("3♥", CardNumber::TREY_HEARTS)]
+    #[case("2h", CardNumber::DEUCE_HEARTS)]
+    #[case("A♦", CardNumber::ACE_DIAMONDS)]
+    #[case("k♦", CardNumber::KING_DIAMONDS)]
+    #[case("Q♦", CardNumber::QUEEN_DIAMONDS)]
+    #[case("Jd", CardNumber::JACK_DIAMONDS)]
+    #[case("tD", CardNumber::TEN_DIAMONDS)]
+    #[case("9♦", CardNumber::NINE_DIAMONDS)]
+    #[case("8D", CardNumber::EIGHT_DIAMONDS)]
+    #[case("7♦", CardNumber::SEVEN_DIAMONDS)]
+    #[case("6D", CardNumber::SIX_DIAMONDS)]
+    #[case("5D", CardNumber::FIVE_DIAMONDS)]
+    #[case("4♦", CardNumber::FOUR_DIAMONDS)]
+    #[case("3♦", CardNumber::TREY_DIAMONDS)]
+    #[case("2d", CardNumber::DEUCE_DIAMONDS)]
+    #[case("a♣", CardNumber::ACE_CLUBS)]
+    #[case("k♣", CardNumber::KING_CLUBS)]
+    #[case("QC", CardNumber::QUEEN_CLUBS)]
+    #[case("jc", CardNumber::JACK_CLUBS)]
+    #[case("tC", CardNumber::TEN_CLUBS)]
+    #[case("9♣", CardNumber::NINE_CLUBS)]
+    #[case("8♣", CardNumber::EIGHT_CLUBS)]
+    #[case("7c", CardNumber::SEVEN_CLUBS)]
+    #[case("6♣", CardNumber::SIX_CLUBS)]
+    #[case("5C", CardNumber::FIVE_CLUBS)]
+    #[case("4c", CardNumber::FOUR_CLUBS)]
+    #[case("3C", CardNumber::TREY_CLUBS)]
+    #[case("2C", CardNumber::DEUCE_CLUBS)]
+    fn from_index(#[case] index: &str, #[case] expected: CKCNumber) {
+        assert_eq!(CKCNumber::from_index(index), expected);
     }
 
     #[test]

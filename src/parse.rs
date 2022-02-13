@@ -1,35 +1,30 @@
-use crate::{CardNumber, CardRank, CardSuit, CKCNumber};
+use crate::{CKCNumber, CardRank, CardSuit, PokerCard};
 
-// #[must_use]
-// fn generate(rank: CardRank, suit: CardSuit) -> CardNumber {}
+#[must_use]
+pub fn five_from_index(index: &str) -> Option<[CKCNumber; 5]> {
+    let mut esses = index.split_whitespace();
+
+    let first = CKCNumber::from_index(esses.next()?);
+    let second = CKCNumber::from_index(esses.next()?);
+    let third = CKCNumber::from_index(esses.next()?);
+    let forth = CKCNumber::from_index(esses.next()?);
+    let fifth = CKCNumber::from_index(esses.next()?);
+    let hand: [CKCNumber; 5] = [first, second, third, forth, fifth];
+    Some(hand)
+}
+
 #[must_use]
 pub fn get_rank_and_suit(index: &str) -> (CardRank, CardSuit) {
     let mut chars = index.chars();
-    let rank: CardRank;
-    let suit: CardSuit;
-    match chars.next() {
-        None => {
-            return (CardRank::BLANK, CardSuit::BLANK)
-        }
-        Some(r) => {
-            rank = CardRank::from_char(r);
-        }
-    }
-    match chars.next() {
-        None => {
-            return (CardRank::BLANK, CardSuit::BLANK)
-        }
-        Some(s) => {
-            suit = CardSuit::from_char(s);
-        }
-    }
+    let rank: CardRank = match chars.next() {
+        None => return (CardRank::BLANK, CardSuit::BLANK),
+        Some(r) => CardRank::from_char(r),
+    };
+    let suit: CardSuit = match chars.next() {
+        None => return (CardRank::BLANK, CardSuit::BLANK),
+        Some(s) => CardSuit::from_char(s),
+    };
     (rank, suit)
-}
-
-pub fn from_index(_index: &str) -> CKCNumber {
-    let (rank, suit) = get_rank_and_suit(index);
-    let suit_sig: u32 = suit.binary_signature();
-    CardNumber::BLANK
 }
 
 #[cfg(test)]
@@ -46,10 +41,5 @@ mod parse_tests {
         let (actual_rank, actual_suit) = get_rank_and_suit(index);
         assert_eq!(rank, actual_rank);
         assert_eq!(suit, actual_suit);
-    }
-
-    #[test]
-    fn test_from_index() {
-        assert_eq!(from_index(""), CardNumber::ACE_SPADES);
     }
 }
