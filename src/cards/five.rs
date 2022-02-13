@@ -32,27 +32,22 @@ impl Five {
         self.0[4]
     }
 
-    #[must_use]
     pub fn set_first(&mut self, card_number: CKCNumber) {
         self.0[0] = card_number;
     }
 
-    #[must_use]
     pub fn set_second(&mut self, card_number: CKCNumber) {
         self.0[1] = card_number;
     }
 
-    #[must_use]
     pub fn set_third(&mut self, card_number: CKCNumber) {
         self.0[2] = card_number;
     }
 
-    #[must_use]
     pub fn set_forth(&mut self, card_number: CKCNumber) {
         self.0[3] = card_number;
     }
 
-    #[must_use]
     pub fn set_fifth(&mut self, card_number: CKCNumber) {
         self.0[4] = card_number;
     }
