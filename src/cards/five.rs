@@ -8,7 +8,7 @@ pub struct Five(pub [CKCNumber; 5]);
 
 impl From<[CKCNumber; 5]> for Five {
     fn from(array: [CKCNumber; 5]) -> Self {
-        FiveCards(array)
+        Five(array)
     }
 }
 
