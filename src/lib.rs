@@ -1,13 +1,16 @@
-#![no_std]
+#![cfg_attr(not(test), no_std)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::unreadable_literal)]
 
 extern crate alloc;
 
+use crate::parse::get_rank_and_suit;
 use strum::EnumIter;
 
 pub mod deck;
+pub mod hand_rank;
 mod lookups;
+pub mod parse;
 
 /// A `PokerCard` is a u32 representation of a variant of Cactus Kev's binary
 /// representation of a poker card as designed for rapid hand evaluation as
@@ -25,7 +28,6 @@ mod lookups;
 /// b = bit turned on depending on rank of card
 /// ```
 pub type CKCNumber = u32;
-pub type HandRankValue = u16;
 
 /// u32 constants for all 52 cards in a standard poker deck.
 pub struct CardNumber;
@@ -135,6 +137,105 @@ pub enum CardRank {
     BLANK,
 }
 
+impl CardRank {
+    #[must_use]
+    pub fn from_char(index: char) -> CardRank {
+        match index {
+            'A' | 'a' => CardRank::ACE,
+            'K' | 'k' => CardRank::KING,
+            'Q' | 'q' => CardRank::QUEEN,
+            'J' | 'j' => CardRank::JACK,
+            'T' | 't' | '0' => CardRank::TEN,
+            '9' => CardRank::NINE,
+            '8' => CardRank::EIGHT,
+            '7' => CardRank::SEVEN,
+            '6' => CardRank::SIX,
+            '5' => CardRank::FIVE,
+            '4' => CardRank::FOUR,
+            '3' => CardRank::THREE,
+            '2' => CardRank::TWO,
+            _ => CardRank::BLANK,
+        }
+    }
+
+    fn bits(self) -> u32 {
+        1 << (16 + self.number())
+    }
+
+    fn number(self) -> u32 {
+        match self {
+            CardRank::ACE => 12,
+            CardRank::KING => 11,
+            CardRank::QUEEN => 10,
+            CardRank::JACK => 9,
+            CardRank::TEN => 8,
+            CardRank::NINE => 7,
+            CardRank::EIGHT => 6,
+            CardRank::SEVEN => 5,
+            CardRank::SIX => 4,
+            CardRank::FIVE => 3,
+            CardRank::FOUR => 2,
+            CardRank::THREE => 1,
+            _ => 0,
+        }
+    }
+
+    fn prime(self) -> u32 {
+        match self {
+            CardRank::ACE => 41,
+            CardRank::KING => 37,
+            CardRank::QUEEN => 31,
+            CardRank::JACK => 29,
+            CardRank::TEN => 23,
+            CardRank::NINE => 19,
+            CardRank::EIGHT => 17,
+            CardRank::SEVEN => 13,
+            CardRank::SIX => 11,
+            CardRank::FIVE => 7,
+            CardRank::FOUR => 5,
+            CardRank::THREE => 3,
+            CardRank::TWO => 2,
+            CardRank::BLANK => 0,
+        }
+    }
+
+    fn shift8(self) -> u32 {
+        self.number() << 8
+    }
+}
+
+#[cfg(test)]
+mod card_rank_tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case('A', CardRank::ACE)]
+    #[case('a', CardRank::ACE)]
+    #[case('K', CardRank::KING)]
+    #[case('k', CardRank::KING)]
+    #[case('Q', CardRank::QUEEN)]
+    #[case('q', CardRank::QUEEN)]
+    #[case('J', CardRank::JACK)]
+    #[case('j', CardRank::JACK)]
+    #[case('T', CardRank::TEN)]
+    #[case('t', CardRank::TEN)]
+    #[case('0', CardRank::TEN)]
+    #[case('9', CardRank::NINE)]
+    #[case('8', CardRank::EIGHT)]
+    #[case('7', CardRank::SEVEN)]
+    #[case('6', CardRank::SIX)]
+    #[case('5', CardRank::FIVE)]
+    #[case('4', CardRank::FOUR)]
+    #[case('3', CardRank::THREE)]
+    #[case('2', CardRank::TWO)]
+    #[case('_', CardRank::BLANK)]
+    #[case(' ', CardRank::BLANK)]
+    fn from_char(#[case] input: char, #[case] expected: CardRank) {
+        assert_eq!(expected, CardRank::from_char(input));
+    }
+}
+
 #[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
 pub enum CardSuit {
     SPADES,
@@ -144,8 +245,67 @@ pub enum CardSuit {
     BLANK,
 }
 
+impl CardSuit {
+    #[must_use]
+    pub fn binary_signature(&self) -> u32 {
+        match self {
+            CardSuit::SPADES => 0x8000,
+            CardSuit::HEARTS => 0x4000,
+            CardSuit::DIAMONDS => 0x2000,
+            CardSuit::CLUBS => 0x1000,
+            CardSuit::BLANK => 0,
+        }
+    }
+
+    #[must_use]
+    pub fn from_char(symbol: char) -> CardSuit {
+        match symbol {
+            '♤' | '♠' | 'S' | 's' => CardSuit::SPADES,
+            '♡' | '♥' | 'H' | 'h' => CardSuit::HEARTS,
+            '♢' | '♦' | 'D' | 'd' => CardSuit::DIAMONDS,
+            '♧' | '♣' | 'C' | 'c' => CardSuit::CLUBS,
+            _ => CardSuit::BLANK,
+        }
+    }
+}
+
+#[cfg(test)]
+mod card_suit_tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[test]
+    fn binary_signature() {
+        assert_eq!(32768, CardSuit::SPADES.binary_signature());
+        assert_eq!(16384, CardSuit::HEARTS.binary_signature());
+        assert_eq!(8192, CardSuit::DIAMONDS.binary_signature());
+        assert_eq!(4096, CardSuit::CLUBS.binary_signature());
+        assert_eq!(0, CardSuit::BLANK.binary_signature());
+    }
+
+    #[rstest]
+    #[case('♠', CardSuit::SPADES)]
+    #[case('S', CardSuit::SPADES)]
+    #[case('s', CardSuit::SPADES)]
+    #[case('♥', CardSuit::HEARTS)]
+    #[case('H', CardSuit::HEARTS)]
+    #[case('h', CardSuit::HEARTS)]
+    #[case('♦', CardSuit::DIAMONDS)]
+    #[case('D', CardSuit::DIAMONDS)]
+    #[case('d', CardSuit::DIAMONDS)]
+    #[case('♣', CardSuit::CLUBS)]
+    #[case('C', CardSuit::CLUBS)]
+    #[case('c', CardSuit::CLUBS)]
+    #[case(' ', CardSuit::BLANK)]
+    #[case('F', CardSuit::BLANK)]
+    fn from_char(#[case] input: char, #[case] expected: CardSuit) {
+        assert_eq!(expected, CardSuit::from_char(input));
+    }
+}
+
 pub mod evaluate {
-    use crate::{CKCNumber, CardNumber, HandRankValue};
+    use crate::hand_rank::HandRankValue;
+    use crate::{CKCNumber, CardNumber};
 
     pub const POSSIBLE_COMBINATIONS: usize = 7937;
 
@@ -362,6 +522,13 @@ mod evaluate_tests {
 }
 
 pub trait PokerCard {
+    //region static
+
+    #[must_use]
+    fn create(rank: CardRank, suit: CardSuit) -> CKCNumber {
+        CKCNumber::filter(rank.bits() | rank.prime() | rank.shift8() | suit.binary_signature())
+    }
+
     /// Only allows you to create a `CKCNumber` that is valid.
     #[must_use]
     fn filter(number: CKCNumber) -> CKCNumber {
@@ -421,6 +588,14 @@ pub trait PokerCard {
             _ => CardNumber::BLANK,
         }
     }
+
+    #[must_use]
+    fn from_index(index: &str) -> CKCNumber {
+        let (rank, suit) = get_rank_and_suit(index);
+        CKCNumber::create(rank, suit)
+    }
+
+    //endregion
 
     fn as_u32(&self) -> u32;
 
@@ -528,6 +703,7 @@ impl PokerCard for CKCNumber {
 #[cfg(test)]
 mod poker_card_tests {
     use super::*;
+    use rstest::rstest;
 
     #[test]
     fn filter() {
@@ -540,6 +716,63 @@ mod poker_card_tests {
             CardNumber::filter(CardNumber::KING_CLUBS)
         );
         assert_eq!(<CKCNumber as PokerCard>::filter(2), CardNumber::BLANK);
+    }
+
+    #[rstest]
+    #[case("A♠", CardNumber::ACE_SPADES)]
+    #[case("ks", CardNumber::KING_SPADES)]
+    #[case("QS", CardNumber::QUEEN_SPADES)]
+    #[case("J♠", CardNumber::JACK_SPADES)]
+    #[case("TS", CardNumber::TEN_SPADES)]
+    #[case("9s", CardNumber::NINE_SPADES)]
+    #[case("8♠", CardNumber::EIGHT_SPADES)]
+    #[case("7S", CardNumber::SEVEN_SPADES)]
+    #[case("6♠", CardNumber::SIX_SPADES)]
+    #[case("5S", CardNumber::FIVE_SPADES)]
+    #[case("4♠", CardNumber::FOUR_SPADES)]
+    #[case("3s", CardNumber::TREY_SPADES)]
+    #[case("2S", CardNumber::DEUCE_SPADES)]
+    #[case("A♥", CardNumber::ACE_HEARTS)]
+    #[case("k♥", CardNumber::KING_HEARTS)]
+    #[case("QH", CardNumber::QUEEN_HEARTS)]
+    #[case("jh", CardNumber::JACK_HEARTS)]
+    #[case("T♥", CardNumber::TEN_HEARTS)]
+    #[case("9♥", CardNumber::NINE_HEARTS)]
+    #[case("8h", CardNumber::EIGHT_HEARTS)]
+    #[case("7H", CardNumber::SEVEN_HEARTS)]
+    #[case("6h", CardNumber::SIX_HEARTS)]
+    #[case("5H", CardNumber::FIVE_HEARTS)]
+    #[case("4♥", CardNumber::FOUR_HEARTS)]
+    #[case("3♥", CardNumber::TREY_HEARTS)]
+    #[case("2h", CardNumber::DEUCE_HEARTS)]
+    #[case("A♦", CardNumber::ACE_DIAMONDS)]
+    #[case("k♦", CardNumber::KING_DIAMONDS)]
+    #[case("Q♦", CardNumber::QUEEN_DIAMONDS)]
+    #[case("Jd", CardNumber::JACK_DIAMONDS)]
+    #[case("tD", CardNumber::TEN_DIAMONDS)]
+    #[case("9♦", CardNumber::NINE_DIAMONDS)]
+    #[case("8D", CardNumber::EIGHT_DIAMONDS)]
+    #[case("7♦", CardNumber::SEVEN_DIAMONDS)]
+    #[case("6D", CardNumber::SIX_DIAMONDS)]
+    #[case("5D", CardNumber::FIVE_DIAMONDS)]
+    #[case("4♦", CardNumber::FOUR_DIAMONDS)]
+    #[case("3♦", CardNumber::TREY_DIAMONDS)]
+    #[case("2d", CardNumber::DEUCE_DIAMONDS)]
+    #[case("a♣", CardNumber::ACE_CLUBS)]
+    #[case("k♣", CardNumber::KING_CLUBS)]
+    #[case("QC", CardNumber::QUEEN_CLUBS)]
+    #[case("jc", CardNumber::JACK_CLUBS)]
+    #[case("tC", CardNumber::TEN_CLUBS)]
+    #[case("9♣", CardNumber::NINE_CLUBS)]
+    #[case("8♣", CardNumber::EIGHT_CLUBS)]
+    #[case("7c", CardNumber::SEVEN_CLUBS)]
+    #[case("6♣", CardNumber::SIX_CLUBS)]
+    #[case("5C", CardNumber::FIVE_CLUBS)]
+    #[case("4c", CardNumber::FOUR_CLUBS)]
+    #[case("3C", CardNumber::TREY_CLUBS)]
+    #[case("2C", CardNumber::DEUCE_CLUBS)]
+    fn from_index(#[case] index: &str, #[case] expected: CKCNumber) {
+        assert_eq!(CKCNumber::from_index(index), expected);
     }
 
     #[test]
@@ -686,5 +919,14 @@ mod poker_card_tests {
         assert!(card.is_blank());
         assert!(0_u32.is_blank());
         assert!(0.is_blank());
+    }
+
+    #[test]
+    fn scratch() {
+        let index = "A♠";
+        let mut chars = index.chars();
+
+        assert_eq!('A', chars.next().unwrap());
+        assert_eq!('♠', chars.next().unwrap());
     }
 }
