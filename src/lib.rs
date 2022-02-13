@@ -7,6 +7,7 @@ extern crate alloc;
 use crate::parse::get_rank_and_suit;
 use strum::EnumIter;
 
+pub mod cards;
 pub mod deck;
 pub mod hand_rank;
 mod lookups;
@@ -519,6 +520,18 @@ mod evaluate_tests {
         assert_eq!(evaluate::five_cards(first), 0);
         assert_eq!(evaluate::five_cards(second), 0);
     }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum HandError {
+    BlankCard,
+    DuplicateCard,
+    Incomplete,
+    InvalidCard,
+    InvalidCardCount,
+    InvalidIndex,
+    NotEnoughCards,
+    TooManyCards,
 }
 
 pub trait PokerCard {
