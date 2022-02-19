@@ -9,7 +9,7 @@ pub struct Five([CKCNumber; 5]);
 impl Five {
     #[must_use]
     pub fn sort(&self) -> Five {
-        let mut array = self.clone();
+        let mut array = *self;
         array.sort_in_place();
         array
     }
