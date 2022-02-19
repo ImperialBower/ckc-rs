@@ -1,4 +1,6 @@
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::cards::HandValidator;
+use crate::{CKCNumber, CardNumber, HandError, PokerCard};
+use core::array::IntoIter;
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -84,11 +86,33 @@ impl Five {
         let hand: [CKCNumber; 5] = [first, second, third, forth, fifth];
         Some(hand)
     }
+
+    fn into_iter(self) -> IntoIter<CKCNumber, 5> {
+        self.0.into_iter()
+    }
 }
 
 impl From<[CKCNumber; 5]> for Five {
     fn from(array: [CKCNumber; 5]) -> Self {
         Five(array)
+    }
+}
+
+impl HandValidator for Five {
+    fn are_unique(&self) -> bool {
+        let sorted = self.sort();
+        let mut last: CKCNumber = u32::MAX;
+        for c in &sorted.0 {
+            if *c >= last {
+                return false;
+            }
+            last = *c;
+        }
+        true
+    }
+
+    fn contain_blank(&self) -> bool {
+        self.into_iter().any(|c| c == CardNumber::BLANK)
     }
 }
 
@@ -127,6 +151,8 @@ mod cards_five_tests {
         assert_eq!(five.third(), CardNumber::BLANK);
         assert_eq!(five.forth(), CardNumber::BLANK);
         assert_eq!(five.fifth(), CardNumber::BLANK);
+        assert!(five.contain_blank());
+        assert!(!five.are_unique());
     }
 
     #[test]
@@ -140,6 +166,8 @@ mod cards_five_tests {
         assert_eq!(five.third(), CardNumber::QUEEN_SPADES);
         assert_eq!(five.forth(), CardNumber::JACK_SPADES);
         assert_eq!(five.fifth(), CardNumber::TEN_SPADES);
+        assert!(!five.contain_blank());
+        assert!(five.are_unique());
     }
 
     #[test]
@@ -153,6 +181,7 @@ mod cards_five_tests {
         assert_eq!(five.third(), CardNumber::BLANK);
         assert_eq!(five.forth(), CardNumber::JACK_SPADES);
         assert_eq!(five.fifth(), CardNumber::TEN_SPADES);
+        assert!(five.contain_blank());
     }
 
     #[test]
