@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 pub struct Four([CKCNumber; 4]);
 
 impl Four {
+    pub const OMAHA_PERMUTATIONS: [[u8; 2]; 6] = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
+
     //region accessors
 
     #[must_use]

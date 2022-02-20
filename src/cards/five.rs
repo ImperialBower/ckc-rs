@@ -83,6 +83,7 @@ impl From<[CKCNumber; 5]> for Five {
 }
 
 impl HandValidator for Five {
+    // TODO: macro?
     fn are_unique(&self) -> bool {
         let sorted = self.sort();
         let mut last: CKCNumber = u32::MAX;
