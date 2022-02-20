@@ -2,6 +2,7 @@ use crate::{CKCNumber, CardNumber};
 use core::slice::Iter;
 
 pub mod five;
+pub mod four;
 pub mod three;
 pub mod two;
 
