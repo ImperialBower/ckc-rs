@@ -1,6 +1,6 @@
 [package]
 name = "ckc-rs"
-version = "0.1.6"
+version = "0.1.7"
 description = "Poker hand evaluation library"
 authors = ["gaoler <gaoler@electronicpanopticon.com>"]
 edition = "2021"
