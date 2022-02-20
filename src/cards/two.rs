@@ -1,5 +1,6 @@
 use crate::cards::HandValidator;
-use crate::{CKCNumber, CardNumber, HandError, PokerCard};
+use crate::{CKCNumber, HandError, PokerCard};
+use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -11,18 +12,6 @@ impl Two {
     #[must_use]
     pub fn new(first: CKCNumber, second: CKCNumber) -> Self {
         Self([first, second])
-    }
-
-    #[must_use]
-    pub fn sort(&self) -> Self {
-        let mut array = *self;
-        array.sort_in_place();
-        array
-    }
-
-    pub fn sort_in_place(&mut self) {
-        self.0.sort_unstable();
-        self.0.reverse();
     }
 
     //region accessors
@@ -93,8 +82,19 @@ impl HandValidator for Two {
         self.first() != self.second()
     }
 
-    fn contain_blank(&self) -> bool {
-        (self.first() == CardNumber::BLANK) || (self.second() == CardNumber::BLANK)
+    fn sort(&self) -> Self {
+        let mut array = *self;
+        array.sort_in_place();
+        array
+    }
+
+    fn sort_in_place(&mut self) {
+        self.0.sort_unstable();
+        self.0.reverse();
+    }
+
+    fn iter(&self) -> Iter<'_, CKCNumber> {
+        self.0.iter()
     }
 }
 
@@ -102,6 +102,7 @@ impl HandValidator for Two {
 #[allow(non_snake_case)]
 mod cards_two_tests {
     use super::*;
+    use crate::CardNumber;
 
     #[test]
     fn are_unique() {

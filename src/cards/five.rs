@@ -1,6 +1,6 @@
 use crate::cards::HandValidator;
-use crate::{CKCNumber, CardNumber, HandError, PokerCard};
-use core::array::IntoIter;
+use crate::{CKCNumber, HandError, PokerCard};
+use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
 #[derive(
@@ -9,18 +9,6 @@ use serde::{Deserialize, Serialize};
 pub struct Five([CKCNumber; 5]);
 
 impl Five {
-    #[must_use]
-    pub fn sort(&self) -> Five {
-        let mut array = *self;
-        array.sort_in_place();
-        array
-    }
-
-    pub fn sort_in_place(&mut self) {
-        self.0.sort_unstable();
-        self.0.reverse();
-    }
-
     //region accessors
 
     #[must_use]
@@ -86,10 +74,6 @@ impl Five {
         let hand: [CKCNumber; 5] = [first, second, third, forth, fifth];
         Some(hand)
     }
-
-    fn into_iter(self) -> IntoIter<CKCNumber, 5> {
-        self.0.into_iter()
-    }
 }
 
 impl From<[CKCNumber; 5]> for Five {
@@ -102,7 +86,7 @@ impl HandValidator for Five {
     fn are_unique(&self) -> bool {
         let sorted = self.sort();
         let mut last: CKCNumber = u32::MAX;
-        for c in &sorted.0 {
+        for c in sorted.iter() {
             if *c >= last {
                 return false;
             }
@@ -111,8 +95,19 @@ impl HandValidator for Five {
         true
     }
 
-    fn contain_blank(&self) -> bool {
-        self.into_iter().any(|c| c == CardNumber::BLANK)
+    fn sort(&self) -> Five {
+        let mut array = *self;
+        array.sort_in_place();
+        array
+    }
+
+    fn sort_in_place(&mut self) {
+        self.0.sort_unstable();
+        self.0.reverse();
+    }
+
+    fn iter(&self) -> Iter<'_, CKCNumber> {
+        self.0.iter()
     }
 }
 
@@ -153,6 +148,7 @@ mod cards_five_tests {
         assert_eq!(five.fifth(), CardNumber::BLANK);
         assert!(five.contain_blank());
         assert!(!five.are_unique());
+        assert!(!five.is_valid());
     }
 
     #[test]
@@ -168,6 +164,7 @@ mod cards_five_tests {
         assert_eq!(five.fifth(), CardNumber::TEN_SPADES);
         assert!(!five.contain_blank());
         assert!(five.are_unique());
+        assert!(five.is_valid());
     }
 
     #[test]
@@ -182,6 +179,7 @@ mod cards_five_tests {
         assert_eq!(five.forth(), CardNumber::JACK_SPADES);
         assert_eq!(five.fifth(), CardNumber::TEN_SPADES);
         assert!(five.contain_blank());
+        assert!(!five.is_valid());
     }
 
     #[test]
