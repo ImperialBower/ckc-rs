@@ -7,6 +7,7 @@ extern crate alloc;
 use crate::parse::get_rank_and_suit;
 use strum::EnumIter;
 
+pub mod cards;
 pub mod deck;
 pub mod hand_rank;
 mod lookups;
@@ -19,13 +20,14 @@ pub mod parse;
 /// The variation being that the `Suit` bits order is inverted for easier sorting.
 /// ```txt
 /// +--------+--------+--------+--------+
-/// |xxxbbbbb|bbbbbbbb|SHDCrrrr|xxpppppp|
+/// |mmmbbbbb|bbbbbbbb|SHDCrrrr|xxpppppp|
 /// +--------+--------+--------+--------+
 ///
 /// p = prime number of rank (deuce=2,trey=3,four=5,...,ace=41)
 /// r = rank of card (deuce=0,trey=1,four=2,five=3,...,ace=12)
 /// SHDC = suit of card (bit turned on based on suit of card)
 /// b = bit turned on depending on rank of card
+/// m = Flags reserved for multiples of the same rank. Stripped for evals.
 /// ```
 pub type CKCNumber = u32;
 
@@ -42,6 +44,17 @@ impl CardNumber {
     pub const SUIT_FILTER: u32 = 0xF000; // 61440 aka 0b11110000_00000000
     pub const SUIT_SHORT_MASK: u32 = 0b1111;
     pub const SUIT_SHIFT: u32 = 12;
+
+    //region multiples
+
+    /// These flags are used to give sorting priority when more than one card
+    /// of a specific rank is present.
+    pub const PAIR: u32 = 536_870_912;
+    pub const TRIPS: u32 = 1_073_741_824;
+    pub const QUADS: u32 = 2_147_483_648;
+    pub const MULTIPLES_FILTER: u32 = 536_870_911;
+
+    //endregion
 
     //region cardnumbers
     pub const ACE_SPADES: u32 = 268_471_337;
@@ -521,6 +534,18 @@ mod evaluate_tests {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum HandError {
+    BlankCard,
+    DuplicateCard,
+    Incomplete,
+    InvalidCard,
+    InvalidCardCount,
+    InvalidIndex,
+    NotEnoughCards,
+    TooManyCards,
+}
+
 pub trait PokerCard {
     //region static
 
@@ -688,6 +713,26 @@ pub trait PokerCard {
     }
 
     fn is_blank(&self) -> bool;
+
+    //region multiples
+
+    fn flag_as_pair(&self) -> CKCNumber {
+        self.as_u32() | CardNumber::PAIR
+    }
+
+    fn flag_as_trips(&self) -> CKCNumber {
+        self.as_u32() | CardNumber::TRIPS
+    }
+
+    fn flag_as_quads(&self) -> CKCNumber {
+        self.as_u32() | CardNumber::QUADS
+    }
+
+    fn strip_multiples_flags(&self) -> CKCNumber {
+        CardNumber::MULTIPLES_FILTER & self.as_u32()
+    }
+
+    //endregion
 }
 
 impl PokerCard for CKCNumber {
@@ -922,11 +967,52 @@ mod poker_card_tests {
     }
 
     #[test]
-    fn scratch() {
-        let index = "A♠";
-        let mut chars = index.chars();
+    fn flag_as_pair() {
+        assert_eq!(805_342_249, CardNumber::ACE_SPADES.flag_as_pair());
+    }
 
-        assert_eq!('A', chars.next().unwrap());
-        assert_eq!('♠', chars.next().unwrap());
+    #[test]
+    fn flag_as_trips() {
+        assert_eq!(1_342_213_161, CardNumber::ACE_SPADES.flag_as_trips());
+    }
+
+    #[test]
+    fn flag_as_quads() {
+        assert_eq!(2_415_954_985, CardNumber::ACE_SPADES.flag_as_quads());
+    }
+
+    #[test]
+    fn strip_multiples_flags() {
+        assert_eq!(
+            CardNumber::ACE_SPADES,
+            CardNumber::ACE_SPADES
+                .flag_as_pair()
+                .strip_multiples_flags()
+        );
+        assert_eq!(
+            CardNumber::ACE_SPADES,
+            CardNumber::ACE_SPADES
+                .flag_as_trips()
+                .strip_multiples_flags()
+        );
+        assert_eq!(
+            CardNumber::ACE_SPADES,
+            CardNumber::ACE_SPADES
+                .flag_as_quads()
+                .strip_multiples_flags()
+        );
+        assert_eq!(
+            CardNumber::ACE_SPADES,
+            CardNumber::ACE_SPADES
+                .flag_as_pair()
+                .flag_as_trips()
+                .flag_as_quads()
+                .strip_multiples_flags()
+        );
+    }
+
+    #[test]
+    fn scratch() {
+        // let paired = 0b10010000000000001000110000101001
     }
 }
