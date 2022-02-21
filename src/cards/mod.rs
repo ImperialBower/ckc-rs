@@ -11,6 +11,8 @@ pub mod two;
 pub trait HandValidator {
     fn are_unique(&self) -> bool;
 
+    fn first(&self) -> CKCNumber;
+
     #[must_use]
     fn sort(&self) -> Self;
 

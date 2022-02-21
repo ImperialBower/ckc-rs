@@ -1,5 +1,6 @@
 use crate::cards::HandValidator;
 use crate::{CKCNumber, HandError, PokerCard};
+use core::cmp;
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
@@ -15,11 +16,6 @@ impl Two {
     }
 
     //region accessors
-
-    #[must_use]
-    pub fn first(&self) -> CKCNumber {
-        self.0[0]
-    }
 
     #[must_use]
     pub fn second(&self) -> CKCNumber {
@@ -40,6 +36,11 @@ impl Two {
     }
 
     //endregion
+
+    #[must_use]
+    pub fn high_card(&self) -> CKCNumber {
+        cmp::max(self.first(), self.second())
+    }
 
     fn from_index(index: &str) -> Option<[CKCNumber; 2]> {
         let mut esses = index.split_whitespace();
@@ -80,6 +81,10 @@ impl TryFrom<&'static str> for Two {
 impl HandValidator for Two {
     fn are_unique(&self) -> bool {
         self.first() != self.second()
+    }
+
+    fn first(&self) -> CKCNumber {
+        self.0[0]
     }
 
     fn sort(&self) -> Self {
@@ -127,6 +132,13 @@ mod cards_two_tests {
         assert!(!Two::new(CardNumber::BLANK, CardNumber::ACE_CLUBS).is_valid());
         assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::BLANK).is_valid());
         assert!(Two::new(CardNumber::ACE_SPADES, CardNumber::ACE_CLUBS).is_valid());
+    }
+
+    #[test]
+    fn high_card() {
+        let hand = Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES);
+
+        assert_eq!(hand.high_card(), CardNumber::ACE_CLUBS);
     }
 
     #[test]
