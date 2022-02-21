@@ -653,6 +653,17 @@ pub trait PokerCard {
         }
     }
 
+    fn get_chen_points(&self) -> f32 {
+        match self.get_card_rank() {
+            CardRank::ACE => 10.0,
+            CardRank::KING => 8.0,
+            CardRank::QUEEN => 7.0,
+            CardRank::JACK => 6.0,
+            CardRank::BLANK => 0.0,
+            _ => f32::from(self.get_card_rank() as u8) / 2.0,
+        }
+    }
+
     fn get_rank_bit(&self) -> u32 {
         self.get_rank_flag() >> CardNumber::RANK_FLAG_SHIFT
     }
@@ -818,6 +829,24 @@ mod poker_card_tests {
     #[case("2C", CardNumber::DEUCE_CLUBS)]
     fn from_index(#[case] index: &str, #[case] expected: CKCNumber) {
         assert_eq!(CKCNumber::from_index(index), expected);
+    }
+
+    #[rstest]
+    #[case("A♠", 10.0)]
+    #[case("ks", 8.0)]
+    #[case("QS", 7.0)]
+    #[case("J♠", 6.0)]
+    #[case("TS", 5.0)]
+    #[case("9s", 4.5)]
+    #[case("8♠", 4.0)]
+    #[case("7S", 3.5)]
+    #[case("6♠", 3.0)]
+    #[case("5S", 2.5)]
+    #[case("4♠", 2.0)]
+    #[case("3s", 1.5)]
+    #[case("2S", 1.0)]
+    fn get_chen_points(#[case] index: &str, #[case] expected: f32) {
+        assert_eq!(CKCNumber::from_index(index).get_chen_points(), expected);
     }
 
     #[test]
