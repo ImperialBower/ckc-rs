@@ -134,20 +134,20 @@ mod card_number_tests {
 
 #[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
 pub enum CardRank {
-    ACE,
-    KING,
-    QUEEN,
-    JACK,
-    TEN,
-    NINE,
-    EIGHT,
-    SEVEN,
-    SIX,
-    FIVE,
-    FOUR,
-    THREE,
-    TWO,
-    BLANK,
+    ACE = 14,
+    KING = 13,
+    QUEEN = 12,
+    JACK = 11,
+    TEN = 10,
+    NINE = 9,
+    EIGHT = 8,
+    SEVEN = 7,
+    SIX = 6,
+    FIVE = 5,
+    FOUR = 4,
+    THREE = 3,
+    TWO = 2,
+    BLANK = 0,
 }
 
 impl CardRank {
@@ -251,11 +251,11 @@ mod card_rank_tests {
 
 #[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
 pub enum CardSuit {
-    SPADES,
-    HEARTS,
-    DIAMONDS,
-    CLUBS,
-    BLANK,
+    SPADES = 4,
+    HEARTS = 3,
+    DIAMONDS = 2,
+    CLUBS = 1,
+    BLANK = 0,
 }
 
 impl CardSuit {
