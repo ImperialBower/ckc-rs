@@ -38,6 +38,12 @@ impl Two {
     //endregion
 
     #[must_use]
+    pub fn get_gap(&self) -> u8 {
+        let s = self.sort();
+        s.first().get_card_rank() as u8 - s.second().get_card_rank() as u8
+    }
+
+    #[must_use]
     pub fn high_card(&self) -> CKCNumber {
         cmp::max(self.first(), self.second())
     }
@@ -132,6 +138,13 @@ mod cards_two_tests {
         assert!(!Two::new(CardNumber::BLANK, CardNumber::ACE_CLUBS).is_valid());
         assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::BLANK).is_valid());
         assert!(Two::new(CardNumber::ACE_SPADES, CardNumber::ACE_CLUBS).is_valid());
+    }
+
+    #[test]
+    fn get_gap() {
+        assert_eq!(12, Two::new(CardNumber::DEUCE_CLUBS, CardNumber::ACE_CLUBS).get_gap());
+        assert_eq!(12, Two::new(CardNumber::ACE_SPADES, CardNumber::DEUCE_CLUBS).get_gap());
+        assert_eq!(0, Two::new(CardNumber::ACE_SPADES, CardNumber::ACE_CLUBS).get_gap());
     }
 
     #[test]
