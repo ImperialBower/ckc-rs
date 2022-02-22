@@ -7,10 +7,6 @@ pub struct Three(pub [CKCNumber; 3]);
 
 impl Three {
     //region getters
-    #[must_use]
-    pub fn first(&self) -> CKCNumber {
-        self.0[0]
-    }
 
     #[must_use]
     pub fn second(&self) -> CKCNumber {
@@ -74,6 +70,10 @@ impl HandValidator for Three {
         (self.first() != self.second())
             && (self.first() != self.third())
             && (self.second() != self.third())
+    }
+
+    fn first(&self) -> CKCNumber {
+        self.0[0]
     }
 
     fn sort(&self) -> Three {

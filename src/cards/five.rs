@@ -12,11 +12,6 @@ impl Five {
     //region accessors
 
     #[must_use]
-    pub fn first(&self) -> CKCNumber {
-        self.0[0]
-    }
-
-    #[must_use]
     pub fn second(&self) -> CKCNumber {
         self.0[1]
     }
@@ -94,6 +89,10 @@ impl HandValidator for Five {
             last = *c;
         }
         true
+    }
+
+    fn first(&self) -> CKCNumber {
+        self.0[0]
     }
 
     fn sort(&self) -> Five {

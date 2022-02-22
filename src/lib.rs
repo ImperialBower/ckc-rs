@@ -134,20 +134,20 @@ mod card_number_tests {
 
 #[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
 pub enum CardRank {
-    ACE,
-    KING,
-    QUEEN,
-    JACK,
-    TEN,
-    NINE,
-    EIGHT,
-    SEVEN,
-    SIX,
-    FIVE,
-    FOUR,
-    THREE,
-    TWO,
-    BLANK,
+    ACE = 14,
+    KING = 13,
+    QUEEN = 12,
+    JACK = 11,
+    TEN = 10,
+    NINE = 9,
+    EIGHT = 8,
+    SEVEN = 7,
+    SIX = 6,
+    FIVE = 5,
+    FOUR = 4,
+    THREE = 3,
+    TWO = 2,
+    BLANK = 0,
 }
 
 impl CardRank {
@@ -251,11 +251,11 @@ mod card_rank_tests {
 
 #[derive(Clone, Copy, Debug, EnumIter, Eq, Hash, PartialEq)]
 pub enum CardSuit {
-    SPADES,
-    HEARTS,
-    DIAMONDS,
-    CLUBS,
-    BLANK,
+    SPADES = 4,
+    HEARTS = 3,
+    DIAMONDS = 2,
+    CLUBS = 1,
+    BLANK = 0,
 }
 
 impl CardSuit {
@@ -653,6 +653,17 @@ pub trait PokerCard {
         }
     }
 
+    fn get_chen_points(&self) -> f32 {
+        match self.get_card_rank() {
+            CardRank::ACE => 10.0,
+            CardRank::KING => 8.0,
+            CardRank::QUEEN => 7.0,
+            CardRank::JACK => 6.0,
+            CardRank::BLANK => 0.0,
+            _ => f32::from(self.get_card_rank() as u8) / 2.0,
+        }
+    }
+
     fn get_rank_bit(&self) -> u32 {
         self.get_rank_flag() >> CardNumber::RANK_FLAG_SHIFT
     }
@@ -818,6 +829,24 @@ mod poker_card_tests {
     #[case("2C", CardNumber::DEUCE_CLUBS)]
     fn from_index(#[case] index: &str, #[case] expected: CKCNumber) {
         assert_eq!(CKCNumber::from_index(index), expected);
+    }
+
+    #[rstest]
+    #[case("A♠", 10.0)]
+    #[case("ks", 8.0)]
+    #[case("QS", 7.0)]
+    #[case("J♠", 6.0)]
+    #[case("TS", 5.0)]
+    #[case("9s", 4.5)]
+    #[case("8♠", 4.0)]
+    #[case("7S", 3.5)]
+    #[case("6♠", 3.0)]
+    #[case("5S", 2.5)]
+    #[case("4♠", 2.0)]
+    #[case("3s", 1.5)]
+    #[case("2S", 1.0)]
+    fn get_chen_points(#[case] index: &str, #[case] expected: f32) {
+        assert_eq!(CKCNumber::from_index(index).get_chen_points(), expected);
     }
 
     #[test]

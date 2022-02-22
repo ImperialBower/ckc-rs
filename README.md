@@ -1,6 +1,7 @@
 # ckc-rs
 
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Build Status](https://github.com/ContractBridge/ckc-rs/actions/workflows/basic.yaml/badge.svg)
 [![Crates.io Version](https://img.shields.io/crates/v/ckc-rs.svg)](https://crates.io/crates/ckc-rs)
 
 

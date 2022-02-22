@@ -1,5 +1,6 @@
 use crate::cards::HandValidator;
 use crate::{CKCNumber, HandError, PokerCard};
+use core::cmp;
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
@@ -15,11 +16,6 @@ impl Two {
     }
 
     //region accessors
-
-    #[must_use]
-    pub fn first(&self) -> CKCNumber {
-        self.0[0]
-    }
 
     #[must_use]
     pub fn second(&self) -> CKCNumber {
@@ -40,6 +36,63 @@ impl Two {
     }
 
     //endregion
+
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn chen_formula(&self) -> i8 {
+        let high_card = self.high_card();
+        let mut points = high_card.get_chen_points();
+
+        if self.is_pocket_pair() {
+            points = f32::max(points * 2.0, 5.0);
+        } else {
+            let gap = self.get_gap();
+            points -= match gap {
+                1 => 1.0,
+                2 => 2.0,
+                3 => 4.0,
+                0 => 0.0,
+                _ => 5.0,
+            };
+
+            let top_rank = high_card.get_card_rank() as u8;
+            if (gap < 2) && (top_rank < 12u8) {
+                points += 1.0;
+            }
+        }
+
+        if self.is_suited() {
+            points += 2.0;
+        }
+
+        points.ceil() as i8
+    }
+
+    #[must_use]
+    pub fn get_gap(&self) -> u8 {
+        let s = self.sort();
+        let distance_between = s.first().get_card_rank() as u8 - s.second().get_card_rank() as u8;
+        if distance_between < 1 {
+            0
+        } else {
+            distance_between - 1
+        }
+    }
+
+    #[must_use]
+    pub fn high_card(&self) -> CKCNumber {
+        cmp::max(self.first(), self.second())
+    }
+
+    #[must_use]
+    pub fn is_pocket_pair(&self) -> bool {
+        self.first().get_card_rank() == self.second().get_card_rank()
+    }
+
+    #[must_use]
+    pub fn is_suited(&self) -> bool {
+        self.first().get_card_suit() == self.second().get_card_suit()
+    }
 
     fn from_index(index: &str) -> Option<[CKCNumber; 2]> {
         let mut esses = index.split_whitespace();
@@ -82,6 +135,10 @@ impl HandValidator for Two {
         self.first() != self.second()
     }
 
+    fn first(&self) -> CKCNumber {
+        self.0[0]
+    }
+
     fn sort(&self) -> Self {
         let mut array = *self;
         array.sort_in_place();
@@ -103,6 +160,7 @@ impl HandValidator for Two {
 mod cards_two_tests {
     use super::*;
     use crate::CardNumber;
+    use rstest::rstest;
 
     #[test]
     fn are_unique() {
@@ -127,6 +185,60 @@ mod cards_two_tests {
         assert!(!Two::new(CardNumber::BLANK, CardNumber::ACE_CLUBS).is_valid());
         assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::BLANK).is_valid());
         assert!(Two::new(CardNumber::ACE_SPADES, CardNumber::ACE_CLUBS).is_valid());
+    }
+
+    #[rstest]
+    #[case(20, Two::new(CardNumber::ACE_SPADES, CardNumber::ACE_CLUBS))]
+    #[case(12, Two::new(CardNumber::ACE_SPADES, CardNumber::KING_SPADES))]
+    #[case(10, Two::new(CardNumber::ACE_SPADES, CardNumber::KING_CLUBS))]
+    #[case(16, Two::new(CardNumber::KING_SPADES, CardNumber::KING_CLUBS))]
+    #[case(14, Two::new(CardNumber::QUEEN_SPADES, CardNumber::QUEEN_CLUBS))]
+    #[case(12, Two::new(CardNumber::JACK_SPADES, CardNumber::JACK_CLUBS))]
+    #[case(10, Two::new(CardNumber::TEN_SPADES, CardNumber::TEN_CLUBS))]
+    #[case(9, Two::new(CardNumber::JACK_SPADES, CardNumber::TEN_SPADES))]
+    #[case(5, Two::new(CardNumber::FIVE_SPADES, CardNumber::ACE_CLUBS))]
+    #[case(7, Two::new(CardNumber::FIVE_SPADES, CardNumber::ACE_SPADES))]
+    #[case(6, Two::new(CardNumber::FIVE_SPADES, CardNumber::SIX_SPADES))]
+    #[case(5, Two::new(CardNumber::TREY_SPADES, CardNumber::TREY_CLUBS))]
+    #[case(5, Two::new(CardNumber::DEUCE_SPADES, CardNumber::DEUCE_CLUBS))]
+    #[case(-1, Two::new(CardNumber::DEUCE_SPADES, CardNumber::SEVEN_CLUBS))]
+    fn chen_formula(#[case] chen_number: i8, #[case] hand: Two) {
+        assert_eq!(chen_number, hand.chen_formula());
+    }
+
+    #[test]
+    fn get_gap() {
+        assert_eq!(
+            11,
+            Two::new(CardNumber::DEUCE_CLUBS, CardNumber::ACE_CLUBS).get_gap()
+        );
+        assert_eq!(
+            11,
+            Two::new(CardNumber::ACE_SPADES, CardNumber::DEUCE_CLUBS).get_gap()
+        );
+        assert_eq!(
+            0,
+            Two::new(CardNumber::ACE_SPADES, CardNumber::ACE_CLUBS).get_gap()
+        );
+    }
+
+    #[test]
+    fn high_card() {
+        let hand = Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES);
+
+        assert_eq!(hand.high_card(), CardNumber::ACE_CLUBS);
+    }
+
+    #[test]
+    fn is_pocket_pair() {
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_pocket_pair());
+        assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::ACE_SPADES).is_pocket_pair());
+    }
+
+    #[test]
+    fn is_suited() {
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_suited());
+        assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_CLUBS).is_suited());
     }
 
     #[test]
