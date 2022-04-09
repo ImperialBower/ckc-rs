@@ -298,15 +298,19 @@ mod card_suit_tests {
 
     #[rstest]
     #[case('♠', CardSuit::SPADES)]
+    #[case('♤', CardSuit::SPADES)]
     #[case('S', CardSuit::SPADES)]
     #[case('s', CardSuit::SPADES)]
     #[case('♥', CardSuit::HEARTS)]
+    #[case('♡', CardSuit::HEARTS)]
     #[case('H', CardSuit::HEARTS)]
     #[case('h', CardSuit::HEARTS)]
     #[case('♦', CardSuit::DIAMONDS)]
+    #[case('♢', CardSuit::DIAMONDS)]
     #[case('D', CardSuit::DIAMONDS)]
     #[case('d', CardSuit::DIAMONDS)]
     #[case('♣', CardSuit::CLUBS)]
+    #[case('♧', CardSuit::CLUBS)]
     #[case('C', CardSuit::CLUBS)]
     #[case('c', CardSuit::CLUBS)]
     #[case(' ', CardSuit::BLANK)]
@@ -421,7 +425,6 @@ pub mod evaluate {
 #[cfg(test)]
 mod evaluate_tests {
     use super::*;
-    use alloc::format;
 
     #[test]
     fn five_cards_royal_flush() {
