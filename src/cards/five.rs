@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::{CKCNumber, CardNumber, HandError, PokerCard};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
@@ -69,6 +69,11 @@ impl Five {
         let hand: [CKCNumber; 5] = [first, second, third, forth, fifth];
         Some(hand)
     }
+
+    pub fn or_rank_bits(&self) -> usize {
+        (self.first() | self.second() | self.third() | self.forth() | self.fifth()) as usize
+            >> CardNumber::RANK_FLAG_SHIFT
+    }
 }
 
 impl From<[CKCNumber; 5]> for Five {
@@ -125,8 +130,25 @@ impl TryFrom<&'static str> for Five {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod cards_five_tests {
+    use alloc::format;
     use super::*;
     use crate::CardNumber;
+
+    #[test]
+    fn or_rank_bits() {
+        let hand = Five::from([
+            CardNumber::ACE_SPADES,
+            CardNumber::KING_SPADES,
+            CardNumber::QUEEN_SPADES,
+            CardNumber::JACK_SPADES,
+            CardNumber::TEN_SPADES,
+        ]);
+
+        let or = hand.or_rank_bits();
+
+        assert_eq!("0001111100000000", format!("{:016b}", or));
+        assert_eq!(or, 7936);
+    }
 
     #[test]
     fn sort() {

@@ -319,6 +319,7 @@ mod card_suit_tests {
 pub mod evaluate {
     use crate::hand_rank::HandRankValue;
     use crate::{CKCNumber, CardNumber};
+    use crate::cards::five::Five;
 
     pub const POSSIBLE_COMBINATIONS: usize = 7937;
 
@@ -357,9 +358,9 @@ pub mod evaluate {
     /// Returns a value that is made up of performing an or operation on all of the
     /// rank bit flags of the `PokerCard`.
     #[must_use]
+    #[deprecated(since = "0.1.9", note = "use Five.or_rank_bits()")]
     pub fn or_rank_bits(five_cards: [CKCNumber; 5]) -> usize {
-        ((five_cards[0] | five_cards[1] | five_cards[2] | five_cards[3] | five_cards[4]) as usize)
-            >> CardNumber::RANK_FLAG_SHIFT
+        Five::from(five_cards).or_rank_bits()
     }
 
     #[allow(clippy::comparison_chain)]
