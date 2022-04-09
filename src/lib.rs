@@ -359,7 +359,7 @@ pub mod evaluate {
     #[must_use]
     pub fn or_rank_bits(five_cards: [CKCNumber; 5]) -> usize {
         ((five_cards[0] | five_cards[1] | five_cards[2] | five_cards[3] | five_cards[4]) as usize)
-            >> 16
+            >> CardNumber::RANK_FLAG_SHIFT
     }
 
     #[allow(clippy::comparison_chain)]
