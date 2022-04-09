@@ -329,7 +329,7 @@ pub mod evaluate {
         if is_corrupt(five_cards) || has_dupes(five_cards) {
             return CardNumber::BLANK as HandRankValue;
         }
-        let i = or_rank_bits(five_cards);
+        let i = Five::from(five_cards).or_rank_bits();
 
         if is_flush(five_cards) {
             return crate::lookups::FLUSHES[i];
@@ -485,21 +485,6 @@ mod evaluate_tests {
         ];
         assert_eq!(evaluate::five_cards(first), 6825);
         assert_eq!(evaluate::five_cards(second), 6684);
-    }
-
-    #[test]
-    fn or_rank_bits() {
-        let cards = [
-            CardNumber::ACE_SPADES,
-            CardNumber::KING_SPADES,
-            CardNumber::QUEEN_SPADES,
-            CardNumber::JACK_SPADES,
-            CardNumber::TEN_SPADES,
-        ];
-
-        let or = evaluate::or_rank_bits(cards);
-        assert_eq!("0001111100000000", format!("{:016b}", or));
-        assert_eq!(or, 7936);
     }
 
     #[test]
