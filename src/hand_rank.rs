@@ -426,6 +426,8 @@ impl Ord for HandRank {
 #[allow(clippy::module_name_repetitions)]
 pub type HandRankValue = u16;
 
+pub const NO_HAND_RANK_VALUE: HandRankValue = 0;
+
 /// `HandRankName` represents the
 /// [traditional name](https://en.wikipedia.org/wiki/List_of_poker_hands) of a five card
 /// `PokerHand`.
@@ -768,6 +770,7 @@ pub enum HandRankClass {
 #[allow(non_snake_case)]
 mod hand_rank_tests {
     use super::*;
+    use crate::cards::five::Five;
     use crate::parse::five_from_index;
     use alloc::format;
     use rstest::rstest;
@@ -1261,12 +1264,13 @@ mod hand_rank_tests {
         #[case] hand_rank_name: HandRankName,
         #[case] hand_rank_class: HandRankClass,
     ) {
-        let hand = five_from_index(index).unwrap();
+        let hand = Five::try_from(index).unwrap();
 
-        let actual_hand_rank = HandRank::from(crate::evaluate::five_cards(hand));
+        let hand_rank = hand.hand_rank();
 
-        assert_eq!(hand_rank_value, actual_hand_rank.value);
-        assert_eq!(hand_rank_name, actual_hand_rank.name);
+        assert_eq!(hand_rank_value, hand_rank.value);
+        assert_eq!(hand_rank_name, hand_rank.name);
+        assert_eq!(hand_rank_class, hand_rank.class);
         assert_eq!(HandRank::determine_class(&hand_rank_value), hand_rank_class);
     }
 

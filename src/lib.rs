@@ -113,7 +113,7 @@ impl CardNumber {
     //endregion
 
     #[must_use]
-    pub fn filter(number: u32) -> CKCNumber {
+    pub fn filter(number: CKCNumber) -> CKCNumber {
         <CKCNumber as PokerCard>::filter(number)
     }
 }
@@ -298,15 +298,19 @@ mod card_suit_tests {
 
     #[rstest]
     #[case('♠', CardSuit::SPADES)]
+    #[case('♤', CardSuit::SPADES)]
     #[case('S', CardSuit::SPADES)]
     #[case('s', CardSuit::SPADES)]
     #[case('♥', CardSuit::HEARTS)]
+    #[case('♡', CardSuit::HEARTS)]
     #[case('H', CardSuit::HEARTS)]
     #[case('h', CardSuit::HEARTS)]
     #[case('♦', CardSuit::DIAMONDS)]
+    #[case('♢', CardSuit::DIAMONDS)]
     #[case('D', CardSuit::DIAMONDS)]
     #[case('d', CardSuit::DIAMONDS)]
     #[case('♣', CardSuit::CLUBS)]
+    #[case('♧', CardSuit::CLUBS)]
     #[case('C', CardSuit::CLUBS)]
     #[case('c', CardSuit::CLUBS)]
     #[case(' ', CardSuit::BLANK)]
@@ -317,6 +321,7 @@ mod card_suit_tests {
 }
 
 pub mod evaluate {
+    use crate::cards::five::Five;
     use crate::hand_rank::HandRankValue;
     use crate::{CKCNumber, CardNumber};
 
@@ -325,25 +330,11 @@ pub mod evaluate {
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
     pub fn five_cards(five_cards: [CKCNumber; 5]) -> HandRankValue {
-        if is_corrupt(five_cards) || has_dupes(five_cards) {
-            return CardNumber::BLANK as HandRankValue;
-        }
-        let i = or_rank_bits(five_cards);
-
-        if is_flush(five_cards) {
-            return crate::lookups::FLUSHES[i];
-        }
-
-        // Continue to evaluate if it's not a flush and the cards aren't
-        // unique (straight or high card).
-        let unique = unique(i);
-        match unique {
-            0 => not_unique(five_cards),
-            _ => unique,
-        }
+        Five::from(five_cards).hand_rank_value_validated()
     }
 
     #[must_use]
+    #[deprecated(since = "0.1.9", note = "use Five.is_flush()")]
     pub fn is_flush(five_cards: [CKCNumber; 5]) -> bool {
         (five_cards[0]
             & five_cards[1]
@@ -357,70 +348,15 @@ pub mod evaluate {
     /// Returns a value that is made up of performing an or operation on all of the
     /// rank bit flags of the `PokerCard`.
     #[must_use]
+    #[deprecated(since = "0.1.9", note = "use Five.or_rank_bits()")]
     pub fn or_rank_bits(five_cards: [CKCNumber; 5]) -> usize {
-        ((five_cards[0] | five_cards[1] | five_cards[2] | five_cards[3] | five_cards[4]) as usize)
-            >> 16
-    }
-
-    #[allow(clippy::comparison_chain)]
-    fn find_in_products(key: usize) -> usize {
-        let mut low = 0;
-        let mut high = 4887;
-        let mut mid;
-
-        while low <= high {
-            mid = (high + low) >> 1; // divide by two
-
-            let product = crate::lookups::PRODUCTS[mid] as usize;
-            if key < product {
-                high = mid - 1;
-            } else if key > product {
-                low = mid + 1;
-            } else {
-                return mid;
-            }
-        }
-        0
-    }
-
-    fn has_dupes(c: [CKCNumber; 5]) -> bool {
-        (1..5).any(|i| c[i..].contains(&c[i - 1]))
-    }
-
-    fn is_corrupt(c: [CKCNumber; 5]) -> bool {
-        for x in &c {
-            if CardNumber::filter(*x) == CardNumber::BLANK {
-                return true;
-            }
-        }
-        false
-    }
-
-    fn multiply_primes(five_cards: [CKCNumber; 5]) -> usize {
-        ((five_cards[0] & 0xff)
-            * (five_cards[1] & 0xff)
-            * (five_cards[2] & 0xff)
-            * (five_cards[3] & 0xff)
-            * (five_cards[4] & 0xff)) as usize
-    }
-
-    fn not_unique(five_cards: [CKCNumber; 5]) -> HandRankValue {
-        crate::lookups::VALUES[find_in_products(multiply_primes(five_cards))]
-    }
-
-    #[allow(clippy::cast_possible_truncation)]
-    fn unique(index: usize) -> HandRankValue {
-        if index > POSSIBLE_COMBINATIONS {
-            return CardNumber::BLANK as HandRankValue;
-        }
-        crate::lookups::UNIQUE_5[index]
+        Five::from(five_cards).or_rank_bits() as usize
     }
 }
 
 #[cfg(test)]
 mod evaluate_tests {
     use super::*;
-    use alloc::format;
 
     #[test]
     fn five_cards_royal_flush() {
@@ -484,21 +420,6 @@ mod evaluate_tests {
         ];
         assert_eq!(evaluate::five_cards(first), 6825);
         assert_eq!(evaluate::five_cards(second), 6684);
-    }
-
-    #[test]
-    fn or_rank_bits() {
-        let cards = [
-            CardNumber::ACE_SPADES,
-            CardNumber::KING_SPADES,
-            CardNumber::QUEEN_SPADES,
-            CardNumber::JACK_SPADES,
-            CardNumber::TEN_SPADES,
-        ];
-
-        let or = evaluate::or_rank_bits(cards);
-        assert_eq!("0001111100000000", format!("{:016b}", or));
-        assert_eq!(or, 7936);
     }
 
     #[test]
@@ -918,6 +839,7 @@ mod poker_card_tests {
 
         let card = CardNumber::BLANK as CKCNumber;
         assert_eq!(0b00000000_00000000, card.get_rank_bit());
+        assert_eq!(0b00000000, card.get_rank_prime());
         assert_eq!(CardRank::BLANK, card.get_card_rank());
         assert_eq!(CardSuit::BLANK, card.get_card_suit());
     }
