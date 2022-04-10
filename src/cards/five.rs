@@ -97,6 +97,11 @@ impl Five {
     }
 
     #[must_use]
+    pub fn is_wheel(&self) -> bool {
+        false
+    }
+
+    #[must_use]
     pub fn or_bits(&self) -> u32 {
         self.first() | self.second() | self.third() | self.forth() | self.fifth()
     }
@@ -212,17 +217,17 @@ mod cards_five_tests {
 
     #[test]
     fn is_straight() {
-        let hand = Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap();
-
-        let rank_bits = hand.or_rank_bits();
-
-        assert_eq!(
-            "00000000000000000001111100000000",
-            format!("{:032b}", rank_bits)
-        );
-        assert_eq!(8, rank_bits.trailing_zeros());
-        assert_eq!(19, rank_bits.leading_zeros());
-        assert!(hand.is_straight());
+        // assert!(Five::try_from("A♠ K♥ Q♠ J♠ T♠").unwrap().is_straight());
+        // assert!(Five::try_from("K♥ Q♥ J♥ T♥ 9♠").unwrap().is_straight());
+        // assert!(Five::try_from("Q♥ J♥ T♥ 9♠ 8C").unwrap().is_straight());
+        // assert!(Five::try_from("J♠ T♥ 9♠ 8♠ 7C").unwrap().is_straight());
+        // assert!(Five::try_from("T♥ 9♠ 8♠ 7C 6S").unwrap().is_straight());
+        // assert!(Five::try_from("9♠ 8♠ 7C 6S 5♥").unwrap().is_straight());
+        // assert!(Five::try_from("8♠ 7C 6S 5♥ 4D").unwrap().is_straight());
+        // assert!(Five::try_from("7C 6S 5♥ 4D 3C").unwrap().is_straight());
+        // assert!(Five::try_from("6S 5♥ 4D 3C 2H").unwrap().is_straight());
+        assert!(Five::try_from("5♥ 4D 3C 2H AS").unwrap().is_straight());
+        assert!(!Five::try_from("K♥ Q♥ J♥ T♥ 8D").unwrap().is_straight());
     }
 
     #[test]
@@ -243,6 +248,9 @@ mod cards_five_tests {
         let or = Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().or_rank_bits();
 
         assert_eq!("0001111100000000", format!("{:016b}", or));
+        assert_eq!("00000000000000000001111100000000", format!("{:032b}", or));
+        assert_eq!(8, or.trailing_zeros());
+        assert_eq!(19, or.leading_zeros());
         assert_eq!(or, 7936);
     }
 
