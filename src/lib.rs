@@ -113,7 +113,7 @@ impl CardNumber {
     //endregion
 
     #[must_use]
-    pub fn filter(number: u32) -> CKCNumber {
+    pub fn filter(number: CKCNumber) -> CKCNumber {
         <CKCNumber as PokerCard>::filter(number)
     }
 }
@@ -334,7 +334,7 @@ pub mod evaluate {
         let five = Five::from(five_cards);
 
         if !five.is_valid() {
-            return CardNumber::BLANK as HandRankValue;
+            return crate::hand_rank::NO_HAND_RANK_VALUE;
         }
 
         let i = five.or_rank_bits() as usize;
@@ -374,31 +374,11 @@ pub mod evaluate {
 
     #[allow(clippy::comparison_chain)]
     fn find_in_products(key: usize) -> usize {
-        let mut low = 0;
-        let mut high = 4887;
-        let mut mid;
-
-        while low <= high {
-            mid = (high + low) >> 1; // divide by two
-
-            let product = crate::lookups::PRODUCTS[mid] as usize;
-            if key < product {
-                high = mid - 1;
-            } else if key > product {
-                low = mid + 1;
-            } else {
-                return mid;
-            }
-        }
-        0
+        Five::find_in_products(key)
     }
 
     fn multiply_primes(five_cards: [CKCNumber; 5]) -> usize {
-        ((five_cards[0] & 0xff)
-            * (five_cards[1] & 0xff)
-            * (five_cards[2] & 0xff)
-            * (five_cards[3] & 0xff)
-            * (five_cards[4] & 0xff)) as usize
+        Five::from(five_cards).multiply_primes()
     }
 
     fn not_unique(five_cards: [CKCNumber; 5]) -> HandRankValue {
@@ -899,6 +879,7 @@ mod poker_card_tests {
 
         let card = CardNumber::BLANK as CKCNumber;
         assert_eq!(0b00000000_00000000, card.get_rank_bit());
+        assert_eq!(0b00000000, card.get_rank_prime());
         assert_eq!(CardRank::BLANK, card.get_card_rank());
         assert_eq!(CardSuit::BLANK, card.get_card_suit());
     }

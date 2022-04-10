@@ -426,6 +426,8 @@ impl Ord for HandRank {
 #[allow(clippy::module_name_repetitions)]
 pub type HandRankValue = u16;
 
+pub const NO_HAND_RANK_VALUE: HandRankValue = 0;
+
 /// `HandRankName` represents the
 /// [traditional name](https://en.wikipedia.org/wiki/List_of_poker_hands) of a five card
 /// `PokerHand`.
