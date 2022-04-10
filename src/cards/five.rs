@@ -10,6 +10,7 @@ pub struct Five([CKCNumber; 5]);
 
 impl Five {
     pub const STRAIGHT_PADDING: u32 = 27;
+    pub const WHEEL_OR_BITS: u32 = 4111;
 
     //region accessors
 
@@ -88,7 +89,9 @@ impl Five {
     pub fn is_straight(&self) -> bool {
         let rank_bits = self.or_rank_bits();
         self.is_valid()
-            && ((rank_bits.trailing_zeros() + rank_bits.leading_zeros()) == Five::STRAIGHT_PADDING)
+            && (((rank_bits.trailing_zeros() + rank_bits.leading_zeros())
+                == Five::STRAIGHT_PADDING)
+                || rank_bits == Five::WHEEL_OR_BITS)
     }
 
     #[must_use]
@@ -98,7 +101,7 @@ impl Five {
 
     #[must_use]
     pub fn is_wheel(&self) -> bool {
-        false
+        self.or_rank_bits() == Five::WHEEL_OR_BITS
     }
 
     #[must_use]
@@ -217,16 +220,21 @@ mod cards_five_tests {
 
     #[test]
     fn is_straight() {
-        // assert!(Five::try_from("A♠ K♥ Q♠ J♠ T♠").unwrap().is_straight());
-        // assert!(Five::try_from("K♥ Q♥ J♥ T♥ 9♠").unwrap().is_straight());
-        // assert!(Five::try_from("Q♥ J♥ T♥ 9♠ 8C").unwrap().is_straight());
-        // assert!(Five::try_from("J♠ T♥ 9♠ 8♠ 7C").unwrap().is_straight());
-        // assert!(Five::try_from("T♥ 9♠ 8♠ 7C 6S").unwrap().is_straight());
-        // assert!(Five::try_from("9♠ 8♠ 7C 6S 5♥").unwrap().is_straight());
-        // assert!(Five::try_from("8♠ 7C 6S 5♥ 4D").unwrap().is_straight());
-        // assert!(Five::try_from("7C 6S 5♥ 4D 3C").unwrap().is_straight());
-        // assert!(Five::try_from("6S 5♥ 4D 3C 2H").unwrap().is_straight());
+        assert!(Five::try_from("A♠ K♥ Q♠ J♠ T♠").unwrap().is_straight());
+        assert!(Five::try_from("K♥ Q♥ J♥ T♥ 9♠").unwrap().is_straight());
+        assert!(Five::try_from("Q♥ J♥ T♥ 9♠ 8C").unwrap().is_straight());
+        assert!(Five::try_from("J♠ T♥ 9♠ 8♠ 7C").unwrap().is_straight());
+        assert!(Five::try_from("T♥ 9♠ 8♠ 7C 6S").unwrap().is_straight());
+        assert!(Five::try_from("9♠ 8♠ 7C 6S 5♥").unwrap().is_straight());
+        assert!(Five::try_from("8♠ 7C 6S 5♥ 4D").unwrap().is_straight());
+        assert!(Five::try_from("7C 6S 5♥ 4D 3C").unwrap().is_straight());
+        assert!(Five::try_from("6S 5♥ 4D 3C 2H").unwrap().is_straight());
         assert!(Five::try_from("5♥ 4D 3C 2H AS").unwrap().is_straight());
+    }
+
+    #[test]
+    fn is_straight__false() {
+        assert!(!Five::try_from("6♥ 4D 3C 2H AS").unwrap().is_straight());
         assert!(!Five::try_from("K♥ Q♥ J♥ T♥ 8D").unwrap().is_straight());
     }
 
@@ -238,9 +246,23 @@ mod cards_five_tests {
         assert!(Five::try_from("K♠ Q♠ J♠ T♠ 9♠")
             .unwrap()
             .is_straight_flush());
+    }
+
+    #[test]
+    fn is_straight_false() {
         assert!(!Five::try_from("A♠ K♥ Q♠ J♠ T♠")
             .unwrap()
             .is_straight_flush());
+    }
+
+    #[test]
+    fn is_wheel() {
+        let wheel = Five::try_from("5♥ 4D 3C 2H AS").unwrap();
+
+        assert_eq!("0001000000001111", format!("{:016b}", wheel.or_rank_bits()));
+        assert_eq!(Five::WHEEL_OR_BITS, wheel.or_rank_bits());
+        assert!(wheel.is_wheel());
+        assert!(!Five::try_from("7♥ 4D 3C 2H AS").unwrap().is_wheel());
     }
 
     #[test]
