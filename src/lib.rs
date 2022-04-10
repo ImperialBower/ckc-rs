@@ -322,7 +322,6 @@ mod card_suit_tests {
 
 pub mod evaluate {
     use crate::cards::five::Five;
-    use crate::cards::HandValidator;
     use crate::hand_rank::HandRankValue;
     use crate::{CKCNumber, CardNumber};
 
@@ -331,25 +330,7 @@ pub mod evaluate {
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
     pub fn five_cards(five_cards: [CKCNumber; 5]) -> HandRankValue {
-        let five = Five::from(five_cards);
-
-        if !five.is_valid() {
-            return crate::hand_rank::NO_HAND_RANK_VALUE;
-        }
-
-        let i = five.or_rank_bits() as usize;
-
-        if five.is_flush() {
-            return crate::lookups::FLUSHES[i];
-        }
-
-        // Continue to evaluate if it's not a flush and the cards aren't
-        // unique (straight or high card).
-        let unique = unique(i);
-        match unique {
-            0 => not_unique(five_cards),
-            _ => unique,
-        }
+        Five::from(five_cards).hand_rank_value_validated()
     }
 
     #[must_use]
@@ -370,27 +351,6 @@ pub mod evaluate {
     #[deprecated(since = "0.1.9", note = "use Five.or_rank_bits()")]
     pub fn or_rank_bits(five_cards: [CKCNumber; 5]) -> usize {
         Five::from(five_cards).or_rank_bits() as usize
-    }
-
-    #[allow(clippy::comparison_chain)]
-    fn find_in_products(key: usize) -> usize {
-        Five::find_in_products(key)
-    }
-
-    fn multiply_primes(five_cards: [CKCNumber; 5]) -> usize {
-        Five::from(five_cards).multiply_primes()
-    }
-
-    fn not_unique(five_cards: [CKCNumber; 5]) -> HandRankValue {
-        crate::lookups::VALUES[find_in_products(multiply_primes(five_cards))]
-    }
-
-    #[allow(clippy::cast_possible_truncation)]
-    fn unique(index: usize) -> HandRankValue {
-        if index > POSSIBLE_COMBINATIONS {
-            return CardNumber::BLANK as HandRankValue;
-        }
-        crate::lookups::UNIQUE_5[index]
     }
 }
 

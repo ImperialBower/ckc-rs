@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::hand_rank::HandRankValue;
+use crate::hand_rank::{HandRank, HandRankValue};
 use crate::{CKCNumber, CardNumber, HandError, PokerCard};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
@@ -78,6 +78,16 @@ impl Five {
     }
 
     //region evaluate
+
+    #[must_use]
+    pub fn hand_rank(&self) -> HandRank {
+        HandRank::from(self.hand_rank_value())
+    }
+
+    #[must_use]
+    pub fn hand_rank_validated(&self) -> HandRank {
+        HandRank::from(self.hand_rank_value_validated())
+    }
 
     #[must_use]
     pub fn hand_rank_value(&self) -> HandRankValue {
@@ -201,15 +211,6 @@ impl From<[CKCNumber; 5]> for Five {
 impl HandValidator for Five {
     // TODO: macro?
     fn are_unique(&self) -> bool {
-        // let sorted = self.sort();
-        // let mut last: CKCNumber = u32::MAX;
-        // for c in sorted.iter() {
-        //     if *c >= last {
-        //         return false;
-        //     }
-        //     last = *c;
-        // }
-        // true
         !(1..5).any(|i| self.0[i..].contains(&self.0[i - 1]))
     }
 
@@ -248,7 +249,7 @@ impl TryFrom<&'static str> for Five {
 #[allow(non_snake_case)]
 mod cards__five_tests {
     use super::*;
-    use crate::hand_rank::{HandRank, HandRankClass, HandRankName};
+    use crate::hand_rank::{HandRankClass, HandRankName};
     use crate::CardNumber;
     use alloc::format;
     use rstest::rstest;
@@ -706,10 +707,10 @@ mod cards__five_tests {
     ) {
         let hand = Five::try_from(index).unwrap();
 
-        let hand_rank_value = hand.hand_rank_value();
-        let hand_rank = HandRank::from(hand_rank_value);
+        // let hand_rank_value = hand.hand_rank_value();
+        let hand_rank = hand.hand_rank();
 
-        assert_eq!(expected_value, hand_rank_value);
+        assert_eq!(expected_value, hand_rank.value);
         assert_eq!(expected_name, hand_rank.name);
         assert_eq!(expected_class, hand_rank.class);
     }
