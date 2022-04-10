@@ -321,9 +321,9 @@ mod card_suit_tests {
 }
 
 pub mod evaluate {
+    use crate::cards::five::Five;
     use crate::hand_rank::HandRankValue;
     use crate::{CKCNumber, CardNumber};
-    use crate::cards::five::Five;
 
     pub const POSSIBLE_COMBINATIONS: usize = 7937;
 
@@ -333,7 +333,7 @@ pub mod evaluate {
         if is_corrupt(five_cards) || has_dupes(five_cards) {
             return CardNumber::BLANK as HandRankValue;
         }
-        let i = Five::from(five_cards).or_rank_bits();
+        let i = Five::from(five_cards).or_rank_bits() as usize;
 
         if is_flush(five_cards) {
             return crate::lookups::FLUSHES[i];
@@ -364,7 +364,7 @@ pub mod evaluate {
     #[must_use]
     #[deprecated(since = "0.1.9", note = "use Five.or_rank_bits()")]
     pub fn or_rank_bits(five_cards: [CKCNumber; 5]) -> usize {
-        Five::from(five_cards).or_rank_bits()
+        Five::from(five_cards).or_rank_bits() as usize
     }
 
     #[allow(clippy::comparison_chain)]

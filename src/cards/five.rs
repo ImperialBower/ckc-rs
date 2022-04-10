@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 pub struct Five([CKCNumber; 5]);
 
 impl Five {
+    pub const STRAIGHT_PADDING: u32 = 27;
+
     //region accessors
 
     #[must_use]
@@ -70,10 +72,41 @@ impl Five {
         Some(hand)
     }
 
-    pub fn or_rank_bits(&self) -> usize {
-        (self.first() | self.second() | self.third() | self.forth() | self.fifth()) as usize
-            >> CardNumber::RANK_FLAG_SHIFT
+    //region bitwise
+
+    #[must_use]
+    pub fn and_bits(&self) -> u32 {
+        self.first() & self.second() & self.third() & self.forth() & self.fifth()
     }
+
+    #[must_use]
+    pub fn is_flush(&self) -> bool {
+        (self.and_bits() & CardNumber::SUIT_FILTER) != 0
+    }
+
+    #[must_use]
+    pub fn is_straight(&self) -> bool {
+        let rank_bits = self.or_rank_bits();
+        self.is_valid()
+            && ((rank_bits.trailing_zeros() + rank_bits.leading_zeros()) == Five::STRAIGHT_PADDING)
+    }
+
+    #[must_use]
+    pub fn is_straight_flush(&self) -> bool {
+        self.is_straight() && self.is_flush()
+    }
+
+    #[must_use]
+    pub fn or_bits(&self) -> u32 {
+        self.first() | self.second() | self.third() | self.forth() | self.fifth()
+    }
+
+    #[must_use]
+    pub fn or_rank_bits(&self) -> u32 {
+        self.or_bits() >> CardNumber::RANK_FLAG_SHIFT
+    }
+
+    //endregion bitwise
 }
 
 impl From<[CKCNumber; 5]> for Five {
@@ -130,21 +163,84 @@ impl TryFrom<&'static str> for Five {
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod cards_five_tests {
-    use alloc::format;
     use super::*;
     use crate::CardNumber;
+    use alloc::format;
+
+    #[test]
+    fn and_bits() {
+        let hand = Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap();
+
+        let and_bits = hand.and_bits();
+
+        assert_eq!(CardNumber::ACE_SPADES, hand.first());
+        assert_eq!(CardNumber::KING_SPADES, hand.second());
+        assert_eq!(CardNumber::QUEEN_SPADES, hand.third());
+        assert_eq!(CardNumber::JACK_SPADES, hand.forth());
+        assert_eq!(CardNumber::TEN_SPADES, hand.fifth());
+        assert_eq!(
+            "00010000000000001000110000101001",
+            format!("{:032b}", hand.first())
+        );
+        assert_eq!(
+            "00001000000000001000101100100101",
+            format!("{:032b}", hand.second())
+        );
+        assert_eq!(
+            "00000100000000001000101000011111",
+            format!("{:032b}", hand.third())
+        );
+        assert_eq!(
+            "00000010000000001000100100011101",
+            format!("{:032b}", hand.forth())
+        );
+        assert_eq!(
+            "00000001000000001000100000010111",
+            format!("{:032b}", hand.fifth())
+        );
+        assert_eq!(
+            "00000000000000001000100000000001",
+            format!("{:032b}", and_bits)
+        );
+    }
+
+    #[test]
+    fn is_flush() {
+        assert!(Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().is_flush());
+        assert!(!Five::try_from("A♠ K♥ Q♠ J♠ T♠").unwrap().is_flush());
+    }
+
+    #[test]
+    fn is_straight() {
+        let hand = Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap();
+
+        let rank_bits = hand.or_rank_bits();
+
+        assert_eq!(
+            "00000000000000000001111100000000",
+            format!("{:032b}", rank_bits)
+        );
+        assert_eq!(8, rank_bits.trailing_zeros());
+        assert_eq!(19, rank_bits.leading_zeros());
+        assert!(hand.is_straight());
+    }
+
+    #[test]
+    fn is_straight_flush() {
+        assert!(Five::try_from("A♠ K♠ Q♠ J♠ T♠")
+            .unwrap()
+            .is_straight_flush());
+        assert!(Five::try_from("K♠ Q♠ J♠ T♠ 9♠")
+            .unwrap()
+            .is_straight_flush());
+        assert!(!Five::try_from("A♠ K♥ Q♠ J♠ T♠")
+            .unwrap()
+            .is_straight_flush());
+    }
 
     #[test]
     fn or_rank_bits() {
-        let hand = Five::from([
-            CardNumber::ACE_SPADES,
-            CardNumber::KING_SPADES,
-            CardNumber::QUEEN_SPADES,
-            CardNumber::JACK_SPADES,
-            CardNumber::TEN_SPADES,
-        ]);
-
-        let or = hand.or_rank_bits();
+        let or = Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().or_rank_bits();
 
         assert_eq!("0001111100000000", format!("{:016b}", or));
         assert_eq!(or, 7936);
