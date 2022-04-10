@@ -322,6 +322,7 @@ mod card_suit_tests {
 
 pub mod evaluate {
     use crate::cards::five::Five;
+    use crate::cards::HandValidator;
     use crate::hand_rank::HandRankValue;
     use crate::{CKCNumber, CardNumber};
 
@@ -330,12 +331,15 @@ pub mod evaluate {
     #[must_use]
     #[allow(clippy::cast_possible_truncation)]
     pub fn five_cards(five_cards: [CKCNumber; 5]) -> HandRankValue {
-        if is_corrupt(five_cards) || has_dupes(five_cards) {
+        let five = Five::from(five_cards);
+
+        if !five.is_valid() {
             return CardNumber::BLANK as HandRankValue;
         }
-        let i = Five::from(five_cards).or_rank_bits() as usize;
 
-        if is_flush(five_cards) {
+        let i = five.or_rank_bits() as usize;
+
+        if five.is_flush() {
             return crate::lookups::FLUSHES[i];
         }
 
@@ -349,6 +353,7 @@ pub mod evaluate {
     }
 
     #[must_use]
+    #[deprecated(since = "0.1.9", note = "use Five.is_flush()")]
     pub fn is_flush(five_cards: [CKCNumber; 5]) -> bool {
         (five_cards[0]
             & five_cards[1]
@@ -386,19 +391,6 @@ pub mod evaluate {
             }
         }
         0
-    }
-
-    fn has_dupes(c: [CKCNumber; 5]) -> bool {
-        (1..5).any(|i| c[i..].contains(&c[i - 1]))
-    }
-
-    fn is_corrupt(c: [CKCNumber; 5]) -> bool {
-        for x in &c {
-            if CardNumber::filter(*x) == CardNumber::BLANK {
-                return true;
-            }
-        }
-        false
     }
 
     fn multiply_primes(five_cards: [CKCNumber; 5]) -> usize {

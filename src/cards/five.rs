@@ -88,10 +88,8 @@ impl Five {
     #[must_use]
     pub fn is_straight(&self) -> bool {
         let rank_bits = self.or_rank_bits();
-        self.is_valid()
-            && (((rank_bits.trailing_zeros() + rank_bits.leading_zeros())
-                == Five::STRAIGHT_PADDING)
-                || rank_bits == Five::WHEEL_OR_BITS)
+        ((rank_bits.trailing_zeros() + rank_bits.leading_zeros()) == Five::STRAIGHT_PADDING)
+            || rank_bits == Five::WHEEL_OR_BITS
     }
 
     #[must_use]
@@ -126,15 +124,16 @@ impl From<[CKCNumber; 5]> for Five {
 impl HandValidator for Five {
     // TODO: macro?
     fn are_unique(&self) -> bool {
-        let sorted = self.sort();
-        let mut last: CKCNumber = u32::MAX;
-        for c in sorted.iter() {
-            if *c >= last {
-                return false;
-            }
-            last = *c;
-        }
-        true
+        // let sorted = self.sort();
+        // let mut last: CKCNumber = u32::MAX;
+        // for c in sorted.iter() {
+        //     if *c >= last {
+        //         return false;
+        //     }
+        //     last = *c;
+        // }
+        // true
+        !(1..5).any(|i| self.0[i..].contains(&self.0[i - 1]))
     }
 
     fn first(&self) -> CKCNumber {
@@ -297,6 +296,73 @@ mod cards_five_tests {
         assert!(five.contain_blank());
         assert!(!five.are_unique());
         assert!(!five.is_valid());
+    }
+
+    #[test]
+    fn hand_validator__is_corrupt() {
+        let first = Five::from([
+            CardNumber::JACK_CLUBS,
+            CardNumber::DEUCE_CLUBS,
+            23,
+            CardNumber::KING_SPADES,
+            CardNumber::TEN_SPADES,
+        ]);
+        let second = Five::from([
+            CardNumber::JACK_CLUBS,
+            CardNumber::QUEEN_DIAMONDS,
+            CardNumber::TREY_CLUBS,
+            CardNumber::KING_SPADES,
+            CardNumber::BLANK,
+        ]);
+
+        assert!(first.is_corrupt());
+        assert!(second.is_corrupt());
+    }
+
+    #[test]
+    fn hand_validator__are_unique() {
+        let first = Five::from([
+            CardNumber::JACK_CLUBS,
+            CardNumber::TREY_CLUBS,
+            CardNumber::DEUCE_CLUBS,
+            CardNumber::KING_SPADES,
+            CardNumber::TEN_SPADES,
+        ]);
+        let second = Five::from([
+            CardNumber::JACK_CLUBS,
+            CardNumber::QUEEN_DIAMONDS,
+            CardNumber::TREY_CLUBS,
+            CardNumber::KING_SPADES,
+            CardNumber::ACE_HEARTS,
+        ]);
+        let third = Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap();
+
+        assert!(first.are_unique());
+        assert!(second.are_unique());
+        assert!(third.are_unique());
+    }
+
+    #[test]
+    fn hand_validator__are_unique__false() {
+        let first = Five::from([
+            CardNumber::JACK_CLUBS,
+            CardNumber::DEUCE_CLUBS,
+            CardNumber::DEUCE_CLUBS,
+            CardNumber::KING_SPADES,
+            CardNumber::TEN_SPADES,
+        ]);
+        let second = Five::from([
+            CardNumber::JACK_CLUBS,
+            CardNumber::QUEEN_DIAMONDS,
+            CardNumber::TREY_CLUBS,
+            CardNumber::KING_SPADES,
+            CardNumber::KING_SPADES,
+        ]);
+        let third = Five::try_from("A♠ A♠ Q♠ J♠ T♠").unwrap();
+
+        assert!(!first.are_unique());
+        assert!(!second.are_unique());
+        assert!(!third.are_unique());
     }
 
     #[test]
