@@ -47,3 +47,7 @@ and [wasm](https://rustwasm.github.io/docs/book/) Rust.
 * [Awesome Embedded Rust](https://github.com/rust-embedded/awesome-embedded-rust)
 * [Rust 🦀 and WebAssembly 🕸](https://rustwasm.github.io/docs/book/)
 * [Writing an OS in Rust ](https://os.phil-opp.com/)
+  * Concurrency
+    * Ferrous Systems
+      * [no_std async/await - soon on stable](https://ferrous-systems.com/blog/stable-async-on-embedded/)
+      * [Concurrency Patterns in Embedded Rust](https://ferrous-systems.com/blog/embedded-concurrency-patterns/)
