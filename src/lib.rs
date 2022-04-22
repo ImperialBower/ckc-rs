@@ -7,6 +7,7 @@ extern crate alloc;
 use crate::parse::get_rank_and_suit;
 use strum::EnumIter;
 
+pub mod alt;
 pub mod cards;
 pub mod deck;
 pub mod hand_rank;
