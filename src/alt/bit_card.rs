@@ -1,6 +1,10 @@
 struct BitCard;
 
+#[allow(dead_code)]
+#[rustfmt::skip]
 impl BitCard {
+    //region cards
+
     pub const ACE_SPADES:     u64 = 0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
     pub const KING_SPADES:    u64 = 0b0100_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
     pub const QUEEN_SPADES:   u64 = 0b0010_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
@@ -53,4 +57,26 @@ impl BitCard {
     pub const FOUR_CLUBS:     u64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0100;
     pub const TREY_CLUBS:     u64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0010;
     pub const DEUCE_CLUBS:    u64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001;
+    pub const BLANK:          u64 = 0;
+
+    //endregion
+
+    pub const ACES: u64 = BitCard::ACE_SPADES | BitCard::ACE_HEARTS | BitCard::ACE_DIAMONDS | BitCard::ACE_CLUBS;
+    pub const KINGS: u64 = BitCard::KING_SPADES | BitCard::KING_HEARTS | BitCard::KING_DIAMONDS | BitCard::KING_CLUBS;
+
+}
+
+#[cfg(test)]
+#[allow(non_snake_case)]
+mod alt__bit_card {
+    use super::*;
+
+    #[test]
+    fn aces() {
+        assert_eq!(BitCard::ACE_SPADES, BitCard::ACE_SPADES & BitCard::ACES);
+        assert_eq!(BitCard::ACE_HEARTS, BitCard::ACE_HEARTS & BitCard::ACES);
+        assert_eq!(BitCard::ACE_DIAMONDS, BitCard::ACE_DIAMONDS & BitCard::ACES);
+        assert_eq!(BitCard::ACE_CLUBS, BitCard::ACE_CLUBS & BitCard::ACES);
+        assert_eq!(BitCard::BLANK, BitCard::KING_DIAMONDS & BitCard::ACES);
+    }
 }
