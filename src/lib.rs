@@ -58,59 +58,59 @@ impl CardNumber {
     //endregion
 
     //region cardnumbers
-    pub const ACE_SPADES: u32 = 268_471_337;
-    pub const KING_SPADES: u32 = 134_253_349;
-    pub const QUEEN_SPADES: u32 = 67_144_223;
-    pub const JACK_SPADES: u32 = 33_589_533;
-    pub const TEN_SPADES: u32 = 16_812_055;
-    pub const NINE_SPADES: u32 = 8_423_187;
-    pub const EIGHT_SPADES: u32 = 4_228_625;
-    pub const SEVEN_SPADES: u32 = 2_131_213;
-    pub const SIX_SPADES: u32 = 1_082_379;
-    pub const FIVE_SPADES: u32 = 557_831;
-    pub const FOUR_SPADES: u32 = 295_429;
-    pub const TREY_SPADES: u32 = 164_099;
-    pub const DEUCE_SPADES: u32 = 98_306;
-    pub const ACE_HEARTS: u32 = 268_454_953;
-    pub const KING_HEARTS: u32 = 134_236_965;
-    pub const QUEEN_HEARTS: u32 = 67_127_839;
-    pub const JACK_HEARTS: u32 = 33_573_149;
-    pub const TEN_HEARTS: u32 = 16_795_671;
-    pub const NINE_HEARTS: u32 = 8_406_803;
-    pub const EIGHT_HEARTS: u32 = 4_212_241;
-    pub const SEVEN_HEARTS: u32 = 2_114_829;
-    pub const SIX_HEARTS: u32 = 1_065_995;
-    pub const FIVE_HEARTS: u32 = 541_447;
-    pub const FOUR_HEARTS: u32 = 279_045;
-    pub const TREY_HEARTS: u32 = 147_715;
-    pub const DEUCE_HEARTS: u32 = 81_922;
-    pub const ACE_DIAMONDS: u32 = 268_446_761;
-    pub const KING_DIAMONDS: u32 = 134_228_773;
-    pub const QUEEN_DIAMONDS: u32 = 67_119_647;
-    pub const JACK_DIAMONDS: u32 = 33_564_957;
-    pub const TEN_DIAMONDS: u32 = 16_787_479;
-    pub const NINE_DIAMONDS: u32 = 8_398_611;
-    pub const EIGHT_DIAMONDS: u32 = 4_204_049;
-    pub const SEVEN_DIAMONDS: u32 = 2_106_637;
-    pub const SIX_DIAMONDS: u32 = 1_057_803;
-    pub const FIVE_DIAMONDS: u32 = 533_255;
-    pub const FOUR_DIAMONDS: u32 = 270_853;
-    pub const TREY_DIAMONDS: u32 = 139_523;
-    pub const DEUCE_DIAMONDS: u32 = 73_730;
-    pub const ACE_CLUBS: u32 = 268_442_665;
-    pub const KING_CLUBS: u32 = 134_224_677;
-    pub const QUEEN_CLUBS: u32 = 67_115_551;
-    pub const JACK_CLUBS: u32 = 33_560_861;
-    pub const TEN_CLUBS: u32 = 16_783_383;
-    pub const NINE_CLUBS: u32 = 8_394_515;
-    pub const EIGHT_CLUBS: u32 = 4_199_953;
-    pub const SEVEN_CLUBS: u32 = 2_102_541;
-    pub const SIX_CLUBS: u32 = 1_053_707;
-    pub const FIVE_CLUBS: u32 = 529_159;
-    pub const FOUR_CLUBS: u32 = 266_757;
-    pub const TREY_CLUBS: u32 = 135_427;
-    pub const DEUCE_CLUBS: u32 = 69_634;
-    pub const BLANK: u32 = 0;
+    pub const ACE_SPADES: CKCNumber = 268_471_337;
+    pub const KING_SPADES: CKCNumber = 134_253_349;
+    pub const QUEEN_SPADES: CKCNumber = 67_144_223;
+    pub const JACK_SPADES: CKCNumber = 33_589_533;
+    pub const TEN_SPADES: CKCNumber = 16_812_055;
+    pub const NINE_SPADES: CKCNumber = 8_423_187;
+    pub const EIGHT_SPADES: CKCNumber = 4_228_625;
+    pub const SEVEN_SPADES: CKCNumber = 2_131_213;
+    pub const SIX_SPADES: CKCNumber = 1_082_379;
+    pub const FIVE_SPADES: CKCNumber = 557_831;
+    pub const FOUR_SPADES: CKCNumber = 295_429;
+    pub const TREY_SPADES: CKCNumber = 164_099;
+    pub const DEUCE_SPADES: CKCNumber = 98_306;
+    pub const ACE_HEARTS: CKCNumber = 268_454_953;
+    pub const KING_HEARTS: CKCNumber = 134_236_965;
+    pub const QUEEN_HEARTS: CKCNumber = 67_127_839;
+    pub const JACK_HEARTS: CKCNumber = 33_573_149;
+    pub const TEN_HEARTS: CKCNumber = 16_795_671;
+    pub const NINE_HEARTS: CKCNumber = 8_406_803;
+    pub const EIGHT_HEARTS: CKCNumber = 4_212_241;
+    pub const SEVEN_HEARTS: CKCNumber = 2_114_829;
+    pub const SIX_HEARTS: CKCNumber = 1_065_995;
+    pub const FIVE_HEARTS: CKCNumber = 541_447;
+    pub const FOUR_HEARTS: CKCNumber = 279_045;
+    pub const TREY_HEARTS: CKCNumber = 147_715;
+    pub const DEUCE_HEARTS: CKCNumber = 81_922;
+    pub const ACE_DIAMONDS: CKCNumber = 268_446_761;
+    pub const KING_DIAMONDS: CKCNumber = 134_228_773;
+    pub const QUEEN_DIAMONDS: CKCNumber = 67_119_647;
+    pub const JACK_DIAMONDS: CKCNumber = 33_564_957;
+    pub const TEN_DIAMONDS: CKCNumber = 16_787_479;
+    pub const NINE_DIAMONDS: CKCNumber = 8_398_611;
+    pub const EIGHT_DIAMONDS: CKCNumber = 4_204_049;
+    pub const SEVEN_DIAMONDS: CKCNumber = 2_106_637;
+    pub const SIX_DIAMONDS: CKCNumber = 1_057_803;
+    pub const FIVE_DIAMONDS: CKCNumber = 533_255;
+    pub const FOUR_DIAMONDS: CKCNumber = 270_853;
+    pub const TREY_DIAMONDS: CKCNumber = 139_523;
+    pub const DEUCE_DIAMONDS: CKCNumber = 73_730;
+    pub const ACE_CLUBS: CKCNumber = 268_442_665;
+    pub const KING_CLUBS: CKCNumber = 134_224_677;
+    pub const QUEEN_CLUBS: CKCNumber = 67_115_551;
+    pub const JACK_CLUBS: CKCNumber = 33_560_861;
+    pub const TEN_CLUBS: CKCNumber = 16_783_383;
+    pub const NINE_CLUBS: CKCNumber = 8_394_515;
+    pub const EIGHT_CLUBS: CKCNumber = 4_199_953;
+    pub const SEVEN_CLUBS: CKCNumber = 2_102_541;
+    pub const SIX_CLUBS: CKCNumber = 1_053_707;
+    pub const FIVE_CLUBS: CKCNumber = 529_159;
+    pub const FOUR_CLUBS: CKCNumber = 266_757;
+    pub const TREY_CLUBS: CKCNumber = 135_427;
+    pub const DEUCE_CLUBS: CKCNumber = 69_634;
+    pub const BLANK: CKCNumber = 0;
     //endregion
 
     #[must_use]
@@ -126,10 +126,7 @@ mod card_number_tests {
     #[test]
     fn filter() {
         assert_eq!(CardNumber::filter(2), CardNumber::BLANK);
-        assert_eq!(
-            CardNumber::filter(CardNumber::NINE_CLUBS),
-            CardNumber::NINE_CLUBS
-        );
+        assert_eq!(CardNumber::filter(CardNumber::NINE_CLUBS), CardNumber::NINE_CLUBS);
     }
 }
 
@@ -337,13 +334,7 @@ pub mod evaluate {
     #[must_use]
     #[deprecated(since = "0.1.9", note = "use Five.is_flush()")]
     pub fn is_flush(five_cards: [CKCNumber; 5]) -> bool {
-        (five_cards[0]
-            & five_cards[1]
-            & five_cards[2]
-            & five_cards[3]
-            & five_cards[4]
-            & CardNumber::SUIT_FILTER)
-            != 0
+        (five_cards[0] & five_cards[1] & five_cards[2] & five_cards[3] & five_cards[4] & CardNumber::SUIT_FILTER) != 0
     }
 
     /// Returns a value that is made up of performing an or operation on all of the
@@ -937,21 +928,15 @@ mod poker_card_tests {
     fn strip_multiples_flags() {
         assert_eq!(
             CardNumber::ACE_SPADES,
-            CardNumber::ACE_SPADES
-                .flag_as_pair()
-                .strip_multiples_flags()
+            CardNumber::ACE_SPADES.flag_as_pair().strip_multiples_flags()
         );
         assert_eq!(
             CardNumber::ACE_SPADES,
-            CardNumber::ACE_SPADES
-                .flag_as_trips()
-                .strip_multiples_flags()
+            CardNumber::ACE_SPADES.flag_as_trips().strip_multiples_flags()
         );
         assert_eq!(
             CardNumber::ACE_SPADES,
-            CardNumber::ACE_SPADES
-                .flag_as_quads()
-                .strip_multiples_flags()
+            CardNumber::ACE_SPADES.flag_as_quads().strip_multiples_flags()
         );
         assert_eq!(
             CardNumber::ACE_SPADES,

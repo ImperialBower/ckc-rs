@@ -1,1 +1,1 @@
-pub mod bit_card;
+pub mod binary_card;

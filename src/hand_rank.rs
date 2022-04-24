@@ -432,9 +432,7 @@ pub const NO_HAND_RANK_VALUE: HandRankValue = 0;
 /// [traditional name](https://en.wikipedia.org/wiki/List_of_poker_hands) of a five card
 /// `PokerHand`.
 #[allow(clippy::module_name_repetitions)]
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, EnumIter, Eq, Hash, Ord, PartialEq, PartialOrd,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, EnumIter, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum HandRankName {
     StraightFlush,
     FourOfAKind,
@@ -450,9 +448,7 @@ pub enum HandRankName {
 
 /// `HandRankClass` represents the more specific type of the five card `PokerHand`.
 #[allow(clippy::module_name_repetitions)]
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, EnumIter, Eq, Hash, Ord, PartialEq, PartialOrd,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, EnumIter, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum HandRankClass {
     RoyalFlush,
     KingHighStraightFlush,

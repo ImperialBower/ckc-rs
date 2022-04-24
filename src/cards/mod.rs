@@ -25,8 +25,7 @@ pub trait HandValidator {
     /// A corrupt hand is one where any of the values in the array doesn't correspond to any
     /// recognized `CardNumber` or is blank.
     fn is_corrupt(&self) -> bool {
-        self.iter()
-            .any(|c| CardNumber::filter(*c) == CardNumber::BLANK)
+        self.iter().any(|c| CardNumber::filter(*c) == CardNumber::BLANK)
     }
 
     fn is_valid(&self) -> bool {

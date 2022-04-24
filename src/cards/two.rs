@@ -4,9 +4,7 @@ use core::cmp;
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Two([CKCNumber; 2]);
 
 impl Two {
@@ -208,18 +206,9 @@ mod cards_two_tests {
 
     #[test]
     fn get_gap() {
-        assert_eq!(
-            11,
-            Two::new(CardNumber::DEUCE_CLUBS, CardNumber::ACE_CLUBS).get_gap()
-        );
-        assert_eq!(
-            11,
-            Two::new(CardNumber::ACE_SPADES, CardNumber::DEUCE_CLUBS).get_gap()
-        );
-        assert_eq!(
-            0,
-            Two::new(CardNumber::ACE_SPADES, CardNumber::ACE_CLUBS).get_gap()
-        );
+        assert_eq!(11, Two::new(CardNumber::DEUCE_CLUBS, CardNumber::ACE_CLUBS).get_gap());
+        assert_eq!(11, Two::new(CardNumber::ACE_SPADES, CardNumber::DEUCE_CLUBS).get_gap());
+        assert_eq!(0, Two::new(CardNumber::ACE_SPADES, CardNumber::ACE_CLUBS).get_gap());
     }
 
     #[test]

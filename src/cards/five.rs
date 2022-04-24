@@ -4,9 +4,7 @@ use crate::{CKCNumber, CardNumber, HandError, PokerCard};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Five([CKCNumber; 5]);
 
 impl Five {
@@ -1926,10 +1924,7 @@ mod cards__five_tests {
 
     #[test]
     fn hand_rank_value__royal_flush() {
-        assert_eq!(
-            1,
-            Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().hand_rank_value()
-        );
+        assert_eq!(1, Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().hand_rank_value());
     }
 
     #[test]
@@ -1943,30 +1938,12 @@ mod cards__five_tests {
         assert_eq!(CardNumber::QUEEN_SPADES, hand.third());
         assert_eq!(CardNumber::JACK_SPADES, hand.forth());
         assert_eq!(CardNumber::TEN_SPADES, hand.fifth());
-        assert_eq!(
-            "00010000000000001000110000101001",
-            format!("{:032b}", hand.first())
-        );
-        assert_eq!(
-            "00001000000000001000101100100101",
-            format!("{:032b}", hand.second())
-        );
-        assert_eq!(
-            "00000100000000001000101000011111",
-            format!("{:032b}", hand.third())
-        );
-        assert_eq!(
-            "00000010000000001000100100011101",
-            format!("{:032b}", hand.forth())
-        );
-        assert_eq!(
-            "00000001000000001000100000010111",
-            format!("{:032b}", hand.fifth())
-        );
-        assert_eq!(
-            "00000000000000001000100000000001",
-            format!("{:032b}", and_bits)
-        );
+        assert_eq!("00010000000000001000110000101001", format!("{:032b}", hand.first()));
+        assert_eq!("00001000000000001000101100100101", format!("{:032b}", hand.second()));
+        assert_eq!("00000100000000001000101000011111", format!("{:032b}", hand.third()));
+        assert_eq!("00000010000000001000100100011101", format!("{:032b}", hand.forth()));
+        assert_eq!("00000001000000001000100000010111", format!("{:032b}", hand.fifth()));
+        assert_eq!("00000000000000001000100000000001", format!("{:032b}", and_bits));
     }
 
     #[test]
@@ -1997,19 +1974,13 @@ mod cards__five_tests {
 
     #[test]
     fn is_straight_flush() {
-        assert!(Five::try_from("A♠ K♠ Q♠ J♠ T♠")
-            .unwrap()
-            .is_straight_flush());
-        assert!(Five::try_from("K♠ Q♠ J♠ T♠ 9♠")
-            .unwrap()
-            .is_straight_flush());
+        assert!(Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().is_straight_flush());
+        assert!(Five::try_from("K♠ Q♠ J♠ T♠ 9♠").unwrap().is_straight_flush());
     }
 
     #[test]
     fn is_straight_false() {
-        assert!(!Five::try_from("A♠ K♥ Q♠ J♠ T♠")
-            .unwrap()
-            .is_straight_flush());
+        assert!(!Five::try_from("A♠ K♥ Q♠ J♠ T♠").unwrap().is_straight_flush());
     }
 
     #[test]

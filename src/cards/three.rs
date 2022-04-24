@@ -67,9 +67,7 @@ impl TryFrom<&'static str> for Three {
 
 impl HandValidator for Three {
     fn are_unique(&self) -> bool {
-        (self.first() != self.second())
-            && (self.first() != self.third())
-            && (self.second() != self.third())
+        (self.first() != self.second()) && (self.first() != self.third()) && (self.second() != self.third())
     }
 
     fn first(&self) -> CKCNumber {
