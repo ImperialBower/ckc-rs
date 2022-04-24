@@ -1,10 +1,11 @@
+use crate::{CKCNumber, CardNumber};
+
 pub type BinaryCard = u64;
 
 #[allow(dead_code)]
 #[rustfmt::skip]
 pub trait BC64 {
-    //region cards
-
+    //region Cards
     const ACE_SPADES:     u64 = 0b1000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
     const KING_SPADES:    u64 = 0b0100_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
     const QUEEN_SPADES:   u64 = 0b0010_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
@@ -61,6 +62,7 @@ pub trait BC64 {
 
     //endregion
 
+    //region Ranks
     const ACES: u64 = BinaryCard::ACE_SPADES | BinaryCard::ACE_HEARTS | BinaryCard::ACE_DIAMONDS | BinaryCard::ACE_CLUBS;
     const KINGS: u64 = BinaryCard::KING_SPADES | BinaryCard::KING_HEARTS | BinaryCard::KING_DIAMONDS | BinaryCard::KING_CLUBS;
     const QUEENS: u64 = BinaryCard::QUEEN_SPADES | BinaryCard::QUEEN_HEARTS | BinaryCard::QUEEN_DIAMONDS | BinaryCard::QUEEN_CLUBS;
@@ -74,22 +76,154 @@ pub trait BC64 {
     const FOURS: u64 = BinaryCard::FOUR_SPADES | BinaryCard::FOUR_HEARTS | BinaryCard::FOUR_DIAMONDS | BinaryCard::FOUR_CLUBS;
     const TREYS: u64 = BinaryCard::TREY_SPADES | BinaryCard::TREY_HEARTS | BinaryCard::TREY_DIAMONDS | BinaryCard::TREY_CLUBS;
     const DEUCES: u64 = BinaryCard::DEUCE_SPADES | BinaryCard::DEUCE_HEARTS | BinaryCard::DEUCE_DIAMONDS | BinaryCard::DEUCE_CLUBS;
+    //endregion Ranks
+
+    const DECK: [BinaryCard; 52] = [
+        BinaryCard::ACE_SPADES,
+        BinaryCard::KING_SPADES,
+        BinaryCard::QUEEN_SPADES,
+        BinaryCard::JACK_SPADES,
+        BinaryCard::TEN_SPADES,
+        BinaryCard::NINE_SPADES,
+        BinaryCard::EIGHT_SPADES,
+        BinaryCard::SEVEN_SPADES,
+        BinaryCard::SIX_SPADES,
+        BinaryCard::FIVE_SPADES,
+        BinaryCard::FOUR_SPADES,
+        BinaryCard::TREY_SPADES,
+        BinaryCard::DEUCE_SPADES,
+        BinaryCard::ACE_HEARTS,
+        BinaryCard::KING_HEARTS,
+        BinaryCard::QUEEN_HEARTS,
+        BinaryCard::JACK_HEARTS,
+        BinaryCard::TEN_HEARTS,
+        BinaryCard::NINE_HEARTS,
+        BinaryCard::EIGHT_HEARTS,
+        BinaryCard::SEVEN_HEARTS,
+        BinaryCard::SIX_HEARTS,
+        BinaryCard::FIVE_HEARTS,
+        BinaryCard::FOUR_HEARTS,
+        BinaryCard::TREY_HEARTS,
+        BinaryCard::DEUCE_HEARTS,
+        BinaryCard::ACE_DIAMONDS,
+        BinaryCard::KING_DIAMONDS,
+        BinaryCard::QUEEN_DIAMONDS,
+        BinaryCard::JACK_DIAMONDS,
+        BinaryCard::TEN_DIAMONDS,
+        BinaryCard::NINE_DIAMONDS,
+        BinaryCard::EIGHT_DIAMONDS,
+        BinaryCard::SEVEN_DIAMONDS,
+        BinaryCard::SIX_DIAMONDS,
+        BinaryCard::FIVE_DIAMONDS,
+        BinaryCard::FOUR_DIAMONDS,
+        BinaryCard::TREY_DIAMONDS,
+        BinaryCard::DEUCE_DIAMONDS,
+        BinaryCard::ACE_CLUBS,
+        BinaryCard::KING_CLUBS,
+        BinaryCard::QUEEN_CLUBS,
+        BinaryCard::JACK_CLUBS,
+        BinaryCard::TEN_CLUBS,
+        BinaryCard::NINE_CLUBS,
+        BinaryCard::EIGHT_CLUBS,
+        BinaryCard::SEVEN_CLUBS,
+        BinaryCard::SIX_CLUBS,
+        BinaryCard::FIVE_CLUBS,
+        BinaryCard::FOUR_CLUBS,
+        BinaryCard::TREY_CLUBS,
+        BinaryCard::DEUCE_CLUBS,
+    ];
+
+    #[must_use]
+    fn from_ckc(ckc: CKCNumber) -> BinaryCard {
+        match ckc {
+            CardNumber::ACE_SPADES => BinaryCard::ACE_SPADES,
+            CardNumber::KING_SPADES => BinaryCard::KING_SPADES,
+            CardNumber::QUEEN_SPADES => BinaryCard::QUEEN_SPADES,
+            CardNumber::JACK_SPADES => BinaryCard::JACK_SPADES,
+            CardNumber::TEN_SPADES => BinaryCard::TEN_SPADES,
+            CardNumber::NINE_SPADES => BinaryCard::NINE_SPADES,
+            CardNumber::EIGHT_SPADES => BinaryCard::EIGHT_SPADES,
+            CardNumber::SEVEN_SPADES => BinaryCard::SEVEN_SPADES,
+            CardNumber::SIX_SPADES => BinaryCard::SIX_SPADES,
+            CardNumber::FIVE_SPADES => BinaryCard::FIVE_SPADES,
+            CardNumber::FOUR_SPADES => BinaryCard::FOUR_SPADES,
+            CardNumber::TREY_SPADES => BinaryCard::TREY_SPADES,
+            CardNumber::DEUCE_SPADES => BinaryCard::DEUCE_SPADES,
+            CardNumber::ACE_HEARTS => BinaryCard::ACE_HEARTS,
+            CardNumber::KING_HEARTS => BinaryCard::KING_HEARTS,
+            CardNumber::QUEEN_HEARTS => BinaryCard::QUEEN_HEARTS,
+            CardNumber::JACK_HEARTS => BinaryCard::JACK_HEARTS,
+            CardNumber::TEN_HEARTS => BinaryCard::TEN_HEARTS,
+            CardNumber::NINE_HEARTS => BinaryCard::NINE_HEARTS,
+            CardNumber::EIGHT_HEARTS => BinaryCard::EIGHT_HEARTS,
+            CardNumber::SEVEN_HEARTS => BinaryCard::SEVEN_HEARTS,
+            CardNumber::SIX_HEARTS => BinaryCard::SIX_HEARTS,
+            CardNumber::FIVE_HEARTS => BinaryCard::FIVE_HEARTS,
+            CardNumber::FOUR_HEARTS => BinaryCard::FOUR_HEARTS,
+            CardNumber::TREY_HEARTS => BinaryCard::TREY_HEARTS,
+            CardNumber::DEUCE_HEARTS => BinaryCard::DEUCE_HEARTS,
+            CardNumber::ACE_DIAMONDS => BinaryCard::ACE_DIAMONDS,
+            CardNumber::KING_DIAMONDS => BinaryCard::KING_DIAMONDS,
+            CardNumber::QUEEN_DIAMONDS => BinaryCard::QUEEN_DIAMONDS,
+            CardNumber::JACK_DIAMONDS => BinaryCard::JACK_DIAMONDS,
+            CardNumber::TEN_DIAMONDS => BinaryCard::TEN_DIAMONDS,
+            CardNumber::NINE_DIAMONDS => BinaryCard::NINE_DIAMONDS,
+            CardNumber::EIGHT_DIAMONDS => BinaryCard::EIGHT_DIAMONDS,
+            CardNumber::SEVEN_DIAMONDS => BinaryCard::SEVEN_DIAMONDS,
+            CardNumber::SIX_DIAMONDS => BinaryCard::SIX_DIAMONDS,
+            CardNumber::FIVE_DIAMONDS => BinaryCard::FIVE_DIAMONDS,
+            CardNumber::FOUR_DIAMONDS => BinaryCard::FOUR_DIAMONDS,
+            CardNumber::TREY_DIAMONDS => BinaryCard::TREY_DIAMONDS,
+            CardNumber::DEUCE_DIAMONDS => BinaryCard::DEUCE_DIAMONDS,
+            CardNumber::ACE_CLUBS => BinaryCard::ACE_CLUBS,
+            CardNumber::KING_CLUBS => BinaryCard::KING_CLUBS,
+            CardNumber::QUEEN_CLUBS => BinaryCard::QUEEN_CLUBS,
+            CardNumber::JACK_CLUBS => BinaryCard::JACK_CLUBS,
+            CardNumber::TEN_CLUBS => BinaryCard::TEN_CLUBS,
+            CardNumber::NINE_CLUBS => BinaryCard::NINE_CLUBS,
+            CardNumber::EIGHT_CLUBS => BinaryCard::EIGHT_CLUBS,
+            CardNumber::SEVEN_CLUBS => BinaryCard::SEVEN_CLUBS,
+            CardNumber::SIX_CLUBS => BinaryCard::SIX_CLUBS,
+            CardNumber::FIVE_CLUBS => BinaryCard::FIVE_CLUBS,
+            CardNumber::FOUR_CLUBS => BinaryCard::FOUR_CLUBS,
+            CardNumber::TREY_CLUBS => BinaryCard::TREY_CLUBS,
+            CardNumber::DEUCE_CLUBS => BinaryCard::DEUCE_CLUBS,
+            _ => BinaryCard::BLANK,
+        }
+    }
+
+    #[must_use]
+    fn has(&self, card: u64) -> bool {
+        self.as_u64() & card == card
+    }
 
     #[must_use]
     fn is_single_card(&self) -> bool {
-        self.as_u84().count_ones() == 1
+        self.number_of_cards() == 1
     }
 
     #[must_use]
     fn number_of_cards(&self) -> u32 {
-        self.as_u84().count_ones()
+        self.as_u64().count_ones()
     }
 
-    fn as_u84(&self) -> u64;
+    fn peel(&mut self) -> BinaryCard;
+
+    fn as_u64(&self) -> u64;
 }
 
 impl BC64 for BinaryCard {
-    fn as_u84(&self) -> u64 {
+    fn peel(&mut self) -> BinaryCard {
+        for bc in BinaryCard::DECK {
+            if *self & bc == bc {
+                *self ^= bc;
+                return bc;
+            }
+        }
+        BinaryCard::BLANK
+    }
+
+    fn as_u64(&self) -> u64 {
         *self
     }
 }
@@ -98,6 +232,13 @@ impl BC64 for BinaryCard {
 #[allow(non_snake_case)]
 mod alt__bit_card {
     use super::*;
+
+    #[test]
+    fn has() {
+        assert!(BinaryCard::ACES.has(BinaryCard::ACE_SPADES));
+        assert!(BinaryCard::ACES.has(BinaryCard::ACE_DIAMONDS));
+        assert!(!BinaryCard::ACES.has(BinaryCard::KING_DIAMONDS));
+    }
 
     #[test]
     fn is_single_card() {
@@ -110,6 +251,22 @@ mod alt__bit_card {
         assert_eq!(4, BinaryCard::ACES.number_of_cards());
     }
 
+    #[test]
+    fn peel() {
+        let mut cards = BinaryCard::ACES;
+        assert!(cards.has(BinaryCard::ACE_SPADES));
+
+        let ace = cards.peel();
+
+        assert!(!cards.has(BinaryCard::ACE_SPADES));
+        assert!(cards.has(BinaryCard::ACE_HEARTS));
+        assert!(cards.has(BinaryCard::ACE_DIAMONDS));
+        assert!(cards.has(BinaryCard::ACE_CLUBS));
+        assert_eq!(BinaryCard::ACE_SPADES, ace);
+        assert_eq!(3, cards.number_of_cards());
+    }
+
+    //region Cards
     #[test]
     fn aces() {
         assert_eq!(BinaryCard::ACE_SPADES, BinaryCard::ACE_SPADES & BinaryCard::ACES);
@@ -238,4 +395,5 @@ mod alt__bit_card {
         assert_eq!(BinaryCard::DEUCE_CLUBS, BinaryCard::DEUCE_CLUBS & BinaryCard::DEUCES);
         assert_eq!(BinaryCard::BLANK, BinaryCard::ACE_DIAMONDS & BinaryCard::DEUCES);
     }
+    //endregion Cards
 }

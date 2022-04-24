@@ -1,6 +1,7 @@
 use crate::{CKCNumber, CardNumber};
 use core::slice::Iter;
 
+pub mod binary_card;
 pub mod five;
 pub mod four;
 pub mod seven;

@@ -4,10 +4,10 @@
 
 extern crate alloc;
 
+use crate::cards::binary_card::{BinaryCard, BC64};
 use crate::parse::get_rank_and_suit;
 use strum::EnumIter;
 
-pub mod alt;
 pub mod cards;
 pub mod deck;
 pub mod hand_rank;
@@ -523,6 +523,65 @@ pub trait PokerCard {
             | CardNumber::FOUR_CLUBS
             | CardNumber::TREY_CLUBS
             | CardNumber::DEUCE_CLUBS => number,
+            _ => CardNumber::BLANK,
+        }
+    }
+
+    #[must_use]
+    fn from_binary_card(bc: BinaryCard) -> CKCNumber {
+        match bc {
+            BinaryCard::ACE_SPADES => CardNumber::ACE_SPADES,
+            BinaryCard::KING_SPADES => CardNumber::KING_SPADES,
+            BinaryCard::QUEEN_SPADES => CardNumber::QUEEN_SPADES,
+            BinaryCard::JACK_SPADES => CardNumber::JACK_SPADES,
+            BinaryCard::TEN_SPADES => CardNumber::TEN_SPADES,
+            BinaryCard::NINE_SPADES => CardNumber::NINE_SPADES,
+            BinaryCard::EIGHT_SPADES => CardNumber::EIGHT_SPADES,
+            BinaryCard::SEVEN_SPADES => CardNumber::SEVEN_SPADES,
+            BinaryCard::SIX_SPADES => CardNumber::SIX_SPADES,
+            BinaryCard::FIVE_SPADES => CardNumber::FIVE_SPADES,
+            BinaryCard::FOUR_SPADES => CardNumber::FOUR_SPADES,
+            BinaryCard::TREY_SPADES => CardNumber::TREY_SPADES,
+            BinaryCard::DEUCE_SPADES => CardNumber::DEUCE_SPADES,
+            BinaryCard::ACE_HEARTS => CardNumber::ACE_HEARTS,
+            BinaryCard::KING_HEARTS => CardNumber::KING_HEARTS,
+            BinaryCard::QUEEN_HEARTS => CardNumber::QUEEN_HEARTS,
+            BinaryCard::JACK_HEARTS => CardNumber::JACK_HEARTS,
+            BinaryCard::TEN_HEARTS => CardNumber::TEN_HEARTS,
+            BinaryCard::NINE_HEARTS => CardNumber::NINE_HEARTS,
+            BinaryCard::EIGHT_HEARTS => CardNumber::EIGHT_HEARTS,
+            BinaryCard::SEVEN_HEARTS => CardNumber::SEVEN_HEARTS,
+            BinaryCard::SIX_HEARTS => CardNumber::SIX_HEARTS,
+            BinaryCard::FIVE_HEARTS => CardNumber::FIVE_HEARTS,
+            BinaryCard::FOUR_HEARTS => CardNumber::FOUR_HEARTS,
+            BinaryCard::TREY_HEARTS => CardNumber::TREY_HEARTS,
+            BinaryCard::DEUCE_HEARTS => CardNumber::DEUCE_HEARTS,
+            BinaryCard::ACE_DIAMONDS => CardNumber::ACE_DIAMONDS,
+            BinaryCard::KING_DIAMONDS => CardNumber::KING_DIAMONDS,
+            BinaryCard::QUEEN_DIAMONDS => CardNumber::QUEEN_DIAMONDS,
+            BinaryCard::JACK_DIAMONDS => CardNumber::JACK_DIAMONDS,
+            BinaryCard::TEN_DIAMONDS => CardNumber::TEN_DIAMONDS,
+            BinaryCard::NINE_DIAMONDS => CardNumber::NINE_DIAMONDS,
+            BinaryCard::EIGHT_DIAMONDS => CardNumber::EIGHT_DIAMONDS,
+            BinaryCard::SEVEN_DIAMONDS => CardNumber::SEVEN_DIAMONDS,
+            BinaryCard::SIX_DIAMONDS => CardNumber::SIX_DIAMONDS,
+            BinaryCard::FIVE_DIAMONDS => CardNumber::FIVE_DIAMONDS,
+            BinaryCard::FOUR_DIAMONDS => CardNumber::FOUR_DIAMONDS,
+            BinaryCard::TREY_DIAMONDS => CardNumber::TREY_DIAMONDS,
+            BinaryCard::DEUCE_DIAMONDS => CardNumber::DEUCE_DIAMONDS,
+            BinaryCard::ACE_CLUBS => CardNumber::ACE_CLUBS,
+            BinaryCard::KING_CLUBS => CardNumber::KING_CLUBS,
+            BinaryCard::QUEEN_CLUBS => CardNumber::QUEEN_CLUBS,
+            BinaryCard::JACK_CLUBS => CardNumber::JACK_CLUBS,
+            BinaryCard::TEN_CLUBS => CardNumber::TEN_CLUBS,
+            BinaryCard::NINE_CLUBS => CardNumber::NINE_CLUBS,
+            BinaryCard::EIGHT_CLUBS => CardNumber::EIGHT_CLUBS,
+            BinaryCard::SEVEN_CLUBS => CardNumber::SEVEN_CLUBS,
+            BinaryCard::SIX_CLUBS => CardNumber::SIX_CLUBS,
+            BinaryCard::FIVE_CLUBS => CardNumber::FIVE_CLUBS,
+            BinaryCard::FOUR_CLUBS => CardNumber::FOUR_CLUBS,
+            BinaryCard::TREY_CLUBS => CardNumber::TREY_CLUBS,
+            BinaryCard::DEUCE_CLUBS => CardNumber::DEUCE_CLUBS,
             _ => CardNumber::BLANK,
         }
     }
