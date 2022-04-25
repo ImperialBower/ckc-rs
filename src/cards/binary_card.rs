@@ -196,6 +196,11 @@ pub trait BC64 {
     fn has(&self, card: u64) -> bool {
         self.as_u64() & card == card
     }
+    //
+    // #[must_use]
+    // fn is_blank(&self) -> bool {
+    //     self.as_u64() == BinaryCard::BLANK
+    // }
 
     #[must_use]
     fn is_single_card(&self) -> bool {
@@ -256,14 +261,39 @@ mod alt__bit_card {
         let mut cards = BinaryCard::ACES;
         assert!(cards.has(BinaryCard::ACE_SPADES));
 
-        let ace = cards.peel();
+        let ace_spades = cards.peel();
 
         assert!(!cards.has(BinaryCard::ACE_SPADES));
         assert!(cards.has(BinaryCard::ACE_HEARTS));
         assert!(cards.has(BinaryCard::ACE_DIAMONDS));
         assert!(cards.has(BinaryCard::ACE_CLUBS));
-        assert_eq!(BinaryCard::ACE_SPADES, ace);
+        assert_eq!(BinaryCard::ACE_SPADES, ace_spades);
         assert_eq!(3, cards.number_of_cards());
+
+        let ace_hearts = cards.peel();
+        assert!(!cards.has(BinaryCard::ACE_SPADES));
+        assert!(!cards.has(BinaryCard::ACE_HEARTS));
+        assert!(cards.has(BinaryCard::ACE_DIAMONDS));
+        assert!(cards.has(BinaryCard::ACE_CLUBS));
+        assert_eq!(BinaryCard::ACE_HEARTS, ace_hearts);
+        assert_eq!(2, cards.number_of_cards());
+
+        let ace_diamonds = cards.peel();
+        assert!(!cards.has(BinaryCard::ACE_SPADES));
+        assert!(!cards.has(BinaryCard::ACE_HEARTS));
+        assert!(!cards.has(BinaryCard::ACE_DIAMONDS));
+        assert!(cards.has(BinaryCard::ACE_CLUBS));
+        assert_eq!(BinaryCard::ACE_DIAMONDS, ace_diamonds);
+        assert_eq!(1, cards.number_of_cards());
+
+        let ace_clubs = cards.peel();
+        assert!(!cards.has(BinaryCard::ACE_SPADES));
+        assert!(!cards.has(BinaryCard::ACE_HEARTS));
+        assert!(!cards.has(BinaryCard::ACE_DIAMONDS));
+        assert!(!cards.has(BinaryCard::ACE_CLUBS));
+        assert_eq!(BinaryCard::ACE_CLUBS, ace_clubs);
+        assert_eq!(0, cards.number_of_cards());
+        // assert!(cards.is_blank());
     }
 
     //region Cards
