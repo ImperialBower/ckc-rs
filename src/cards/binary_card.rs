@@ -196,11 +196,6 @@ pub trait BC64 {
     fn has(&self, card: u64) -> bool {
         self.as_u64() & card == card
     }
-    //
-    // #[must_use]
-    // fn is_blank(&self) -> bool {
-    //     self.as_u64() == BinaryCard::BLANK
-    // }
 
     #[must_use]
     fn is_single_card(&self) -> bool {
@@ -293,7 +288,7 @@ mod alt__bit_card {
         assert!(!cards.has(BinaryCard::ACE_CLUBS));
         assert_eq!(BinaryCard::ACE_CLUBS, ace_clubs);
         assert_eq!(0, cards.number_of_cards());
-        // assert!(cards.is_blank());
+        assert_eq!(0, cards);
     }
 
     //region Cards
