@@ -32,17 +32,6 @@ impl Six {
             three.third(),
         ])
     }
-    //
-    // #[must_use]
-    // pub fn five_from_permutation(&self, permutation: [u8; 5]) -> Five {
-    //     Five::new(
-    //         self.0[permutation[0] as usize],
-    //         self.0[permutation[1] as usize],
-    //         self.0[permutation[2] as usize],
-    //         self.0[permutation[3] as usize],
-    //         self.0[permutation[4] as usize],
-    //     )
-    // }
 
     //region accessors
 
