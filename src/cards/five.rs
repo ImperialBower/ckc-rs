@@ -1,5 +1,5 @@
-use crate::cards::HandValidator;
-use crate::hand_rank::{HandRank, HandRankValue};
+use crate::cards::{HandRanker, HandValidator};
+use crate::hand_rank::HandRankValue;
 use crate::{CKCNumber, CardNumber, HandError, PokerCard};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
@@ -13,6 +13,11 @@ impl Five {
     /// if it's not a wheel (5♥ 4♥ 3♥ 2♠ A♠).
     pub const STRAIGHT_PADDING: u32 = 27;
     pub const WHEEL_OR_BITS: u32 = 4111;
+
+    #[must_use]
+    pub fn new(first: CKCNumber, second: CKCNumber, third: CKCNumber, forth: CKCNumber, fifth: CKCNumber) -> Self {
+        Self([first, second, third, forth, fifth])
+    }
 
     //region accessors
 
@@ -73,43 +78,6 @@ impl Five {
         let fifth = CKCNumber::from_index(esses.next()?);
         let hand: [CKCNumber; 5] = [first, second, third, forth, fifth];
         Some(hand)
-    }
-
-    //region evaluate
-
-    #[must_use]
-    pub fn hand_rank(&self) -> HandRank {
-        HandRank::from(self.hand_rank_value())
-    }
-
-    #[must_use]
-    pub fn hand_rank_validated(&self) -> HandRank {
-        HandRank::from(self.hand_rank_value_validated())
-    }
-
-    #[must_use]
-    pub fn hand_rank_value(&self) -> HandRankValue {
-        let i = self.or_rank_bits() as usize;
-
-        if self.is_flush() {
-            return crate::lookups::FLUSHES[i];
-        }
-
-        // Continue to evaluate if it's not a flush and the cards aren't
-        // unique (straight or high card).
-        let unique = Five::unique(i);
-        match unique {
-            0 => self.not_unique(),
-            _ => unique,
-        }
-    }
-
-    #[must_use]
-    pub fn hand_rank_value_validated(&self) -> HandRankValue {
-        if !self.is_valid() {
-            return crate::hand_rank::NO_HAND_RANK_VALUE;
-        }
-        self.hand_rank_value()
     }
 
     #[must_use]
@@ -206,6 +174,31 @@ impl From<[CKCNumber; 5]> for Five {
     }
 }
 
+impl HandRanker for Five {
+    fn hand_rank_value(&self) -> HandRankValue {
+        let i = self.or_rank_bits() as usize;
+
+        if self.is_flush() {
+            return crate::lookups::FLUSHES[i];
+        }
+
+        // Continue to evaluate if it's not a flush and the cards aren't
+        // unique (straight or high card).
+        let unique = Five::unique(i);
+        match unique {
+            0 => self.not_unique(),
+            _ => unique,
+        }
+    }
+
+    fn hand_rank_value_validated(&self) -> HandRankValue {
+        if !self.is_valid() {
+            return crate::hand_rank::NO_HAND_RANK_VALUE;
+        }
+        self.hand_rank_value()
+    }
+}
+
 impl HandValidator for Five {
     // TODO: macro?
     fn are_unique(&self) -> bool {
@@ -250,8 +243,6 @@ mod cards__five_tests {
     use crate::hand_rank::{HandRankClass, HandRankName};
     use crate::CardNumber;
     use alloc::format;
-    use rstest::rstest;
-
     #[rustfmt::skip]
     #[rstest]
     #[case("A♠ K♠ Q♠ J♠ T♠", 1, HandRankName::StraightFlush, HandRankClass::RoyalFlush)]
@@ -1902,8 +1893,15 @@ mod cards__five_tests {
     #[case("9C 8D 7C 6S 4D", 7411, HandRankName::HighCard, HandRankClass::NineHigh)]
     #[case("9D 5D 4♥ 3D 2D", 7444, HandRankName::HighCard, HandRankClass::NineHigh)]
     #[case("8D 7C 6S 5D 3H", 7445, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 6S 5D 2H", 7446, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 6S 4D 3H", 7447, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 6S 4D 2H", 7448, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 6S 3D 2H", 7449, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 5S 4D 3H", 7450, HandRankName::HighCard, HandRankClass::EightHigh)]
     #[case("8D 5D 4♥ 3D 2D", 7458, HandRankName::HighCard, HandRankClass::EightHigh)]
     #[case("7C 6S 5D 4H 2C", 7459, HandRankName::HighCard, HandRankClass::SevenHigh)]
+    #[case("7D 6D 5♥ 3D 2D", 7460, HandRankName::HighCard, HandRankClass::SevenHigh)]
+    #[case("7D 6D 4♥ 3D 2D", 7461, HandRankName::HighCard, HandRankClass::SevenHigh)]
     #[case("7D 5D 4♥ 3D 2D", 7462, HandRankName::HighCard, HandRankClass::SevenHigh)]
     #[case("A♠ A♠ Q♠ J♠ T♠", 0, HandRankName::Invalid, HandRankClass::Invalid)]
     fn hand_rank_value(
@@ -1920,6 +1918,20 @@ mod cards__five_tests {
         assert_eq!(expected_value, hand_rank.value);
         assert_eq!(expected_name, hand_rank.name);
         assert_eq!(expected_class, hand_rank.class);
+    }
+
+    use rstest::rstest;
+
+    #[test]
+    fn new() {
+        let five = Five::new(
+            CardNumber::ACE_SPADES,
+            CardNumber::KING_SPADES,
+            CardNumber::QUEEN_SPADES,
+            CardNumber::JACK_SPADES,
+            CardNumber::TEN_SPADES,
+        );
+        assert_eq!(five.hand_rank_value(), 1);
     }
 
     #[test]

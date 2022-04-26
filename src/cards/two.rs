@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::{BinaryCard, CKCNumber, HandError, PokerCard, BC64};
 use core::cmp;
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
@@ -128,6 +128,29 @@ impl TryFrom<&'static str> for Two {
     }
 }
 
+impl TryFrom<BinaryCard> for Two {
+    type Error = HandError;
+
+    fn try_from(binary_card: BinaryCard) -> Result<Self, Self::Error> {
+        match binary_card.number_of_cards() {
+            0..=1 => Err(HandError::NotEnoughCards),
+            2 => {
+                let mut bc = binary_card;
+                let two = Two::new(
+                    CKCNumber::from_binary_card(bc.peel()),
+                    CKCNumber::from_binary_card(bc.peel()),
+                );
+                if two.is_valid() {
+                    Ok(two)
+                } else {
+                    Err(HandError::InvalidBinaryFormat)
+                }
+            },
+            _ => Err(HandError::TooManyCards),
+        }
+    }
+}
+
 impl HandValidator for Two {
     fn are_unique(&self) -> bool {
         self.first() != self.second()
@@ -228,6 +251,42 @@ mod cards_two_tests {
     fn is_suited() {
         assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_suited());
         assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_CLUBS).is_suited());
+    }
+
+    #[test]
+    fn try_from__binary_card() {
+        let t = Two::try_from(BinaryCard::ACE_SPADES.fold_in(BinaryCard::ACE_DIAMONDS));
+        assert!(t.is_ok());
+        assert!(!t.is_err());
+        assert_eq!(Two::new(CardNumber::ACE_SPADES, CardNumber::ACE_DIAMONDS), t.unwrap());
+    }
+
+    #[test]
+    fn try_from__binary_card__not_enough() {
+        let t = Two::try_from(BinaryCard::ACE_SPADES);
+        assert!(t.is_err());
+        assert_eq!(t.unwrap_err(), HandError::NotEnoughCards);
+        assert_eq!(Two::try_from(BinaryCard::BLANK).unwrap_err(), HandError::NotEnoughCards);
+    }
+
+    #[test]
+    fn try_from__binary_card__too_many() {
+        let t = Two::try_from(
+            BinaryCard::ACE_SPADES
+                .fold_in(BinaryCard::ACE_DIAMONDS)
+                .fold_in(BinaryCard::ACE_CLUBS),
+        );
+        assert!(t.is_err());
+        assert_eq!(t.unwrap_err(), HandError::TooManyCards);
+    }
+
+    #[test]
+    fn try_from__binary_card__invalid_binary_format() {
+        let bc = 0b1_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000
+            .fold_in(0b10_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000);
+        let t = Two::try_from(bc);
+        assert!(t.is_err());
+        assert_eq!(t.unwrap_err(), HandError::InvalidBinaryFormat);
     }
 
     #[test]

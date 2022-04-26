@@ -320,6 +320,7 @@ mod card_suit_tests {
 
 pub mod evaluate {
     use crate::cards::five::Five;
+    use crate::cards::HandRanker;
     use crate::hand_rank::HandRankValue;
     use crate::{CKCNumber, CardNumber};
 
@@ -452,6 +453,7 @@ pub enum HandError {
     BlankCard,
     DuplicateCard,
     Incomplete,
+    InvalidBinaryFormat,
     InvalidCard,
     InvalidCardCount,
     InvalidIndex,

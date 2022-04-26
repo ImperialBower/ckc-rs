@@ -1,6 +1,6 @@
 use crate::cards::five::Five;
 use crate::cards::two::Two;
-use crate::cards::HandValidator;
+use crate::cards::{HandValidator, Permutator};
 use crate::{CKCNumber, HandError, PokerCard};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
@@ -168,6 +168,18 @@ impl HandValidator for Seven {
     }
 }
 
+impl Permutator for Seven {
+    fn five_from_permutation(&self, permutation: [u8; 5]) -> Five {
+        Five::new(
+            self.0[permutation[0] as usize],
+            self.0[permutation[1] as usize],
+            self.0[permutation[2] as usize],
+            self.0[permutation[3] as usize],
+            self.0[permutation[4] as usize],
+        )
+    }
+}
+
 impl TryFrom<&'static str> for Seven {
     type Error = HandError;
 
@@ -208,6 +220,48 @@ mod cards_seven_tests {
         assert!(seven.contain_blank());
         assert!(!seven.are_unique());
         assert!(!seven.is_valid());
+    }
+
+    #[test]
+    fn five_from_permutation() {
+        let seven = Seven::try_from("A♠ K♠ Q♠ J♠ T♠ 9♠ 8♠").unwrap();
+
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[0]),
+            Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[1]),
+            Five::try_from("A♠ K♠ Q♠ J♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[2]),
+            Five::try_from("A♠ K♠ Q♠ J♠ 8♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[3]),
+            Five::try_from("A♠ K♠ Q♠ T♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[4]),
+            Five::try_from("A♠ K♠ Q♠ T♠ 8♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[5]),
+            Five::try_from("A♠ K♠ Q♠ 9♠ 8♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[6]),
+            Five::try_from("A♠ K♠ J♠ T♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[7]),
+            Five::try_from("A♠ K♠ J♠ T♠ 8♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[20]),
+            Five::try_from("Q♠ J♠ T♠ 9♠ 8♠").unwrap()
+        );
     }
 
     #[test]

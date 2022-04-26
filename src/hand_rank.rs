@@ -767,6 +767,7 @@ pub enum HandRankClass {
 mod hand_rank_tests {
     use super::*;
     use crate::cards::five::Five;
+    use crate::cards::HandRanker;
     use crate::parse::five_from_index;
     use alloc::format;
     use rstest::rstest;

@@ -1,4 +1,11 @@
-use crate::{CKCNumber, CardNumber};
+use crate::cards::five::Five;
+use crate::cards::four::Four;
+use crate::cards::seven::Seven;
+use crate::cards::six::Six;
+use crate::cards::three::Three;
+use crate::cards::two::Two;
+use crate::cards::HandValidator;
+use crate::{CKCNumber, CardNumber, PokerCard};
 
 pub type BinaryCard = u64;
 
@@ -59,6 +66,10 @@ pub trait BC64 {
     const TREY_CLUBS:     u64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0010;
     const DEUCE_CLUBS:    u64 = 0b0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001;
     const BLANK:          u64 = 0;
+
+    const ALL:            u64 = 0b1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111_1111;
+    /// Used to check for values that wouldn't be a valid for a `BinaryCard`.
+    const OVERFLOW:       u64 = 0b1111_1111_1111_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000;
 
     //endregion
 
@@ -193,6 +204,72 @@ pub trait BC64 {
     }
 
     #[must_use]
+    fn from_two(two: Two) -> BinaryCard {
+        BinaryCard::from_ckc(two.first()) | BinaryCard::from_ckc(two.second())
+    }
+
+    #[must_use]
+    fn from_three(three: Three) -> BinaryCard {
+        BinaryCard::from_ckc(three.first())
+            | BinaryCard::from_ckc(three.second())
+            | BinaryCard::from_ckc(three.third())
+    }
+
+    #[must_use]
+    fn from_four(four: Four) -> BinaryCard {
+        BinaryCard::from_ckc(four.first())
+            | BinaryCard::from_ckc(four.second())
+            | BinaryCard::from_ckc(four.third())
+            | BinaryCard::from_ckc(four.forth())
+    }
+
+    #[must_use]
+    fn from_five(five: Five) -> BinaryCard {
+        BinaryCard::from_ckc(five.first())
+            | BinaryCard::from_ckc(five.second())
+            | BinaryCard::from_ckc(five.third())
+            | BinaryCard::from_ckc(five.forth())
+            | BinaryCard::from_ckc(five.fifth())
+    }
+
+    #[must_use]
+    fn from_six(six: Six) -> BinaryCard {
+        BinaryCard::from_ckc(six.first())
+            | BinaryCard::from_ckc(six.second())
+            | BinaryCard::from_ckc(six.third())
+            | BinaryCard::from_ckc(six.forth())
+            | BinaryCard::from_ckc(six.fifth())
+            | BinaryCard::from_ckc(six.sixth())
+    }
+
+    #[must_use]
+    fn from_seven(seven: Seven) -> BinaryCard {
+        BinaryCard::from_ckc(seven.first())
+            | BinaryCard::from_ckc(seven.second())
+            | BinaryCard::from_ckc(seven.third())
+            | BinaryCard::from_ckc(seven.forth())
+            | BinaryCard::from_ckc(seven.fifth())
+            | BinaryCard::from_ckc(seven.sixth())
+            | BinaryCard::from_ckc(seven.seventh())
+    }
+
+    #[must_use]
+    fn fold_in(&self, bc: BinaryCard) -> BinaryCard {
+        self.as_u64() | bc
+    }
+
+    #[must_use]
+    fn from_index(index: &str) -> BinaryCard {
+        let mut bc = BinaryCard::BLANK;
+
+        for s in index.split_whitespace() {
+            bc = bc.fold_in(BinaryCard::from_ckc(CKCNumber::from_index(s)));
+        }
+
+        bc
+    }
+
+    #[must_use]
     fn has(&self, card: u64) -> bool {
         self.as_u64() & card == card
     }
@@ -200,6 +277,11 @@ pub trait BC64 {
     #[must_use]
     fn is_single_card(&self) -> bool {
         self.number_of_cards() == 1
+    }
+
+    #[must_use]
+    fn is_valid(&self) -> bool {
+        (self.as_u64() != BinaryCard::BLANK) && ((self.as_u64() & BinaryCard::OVERFLOW).number_of_cards()) < 1
     }
 
     #[must_use]
@@ -232,6 +314,161 @@ impl BC64 for BinaryCard {
 #[allow(non_snake_case)]
 mod alt__bit_card {
     use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case("A♠", BinaryCard::ACE_SPADES)]
+    #[case("ks", BinaryCard::KING_SPADES)]
+    #[case("QS", BinaryCard::QUEEN_SPADES)]
+    #[case("J♠", BinaryCard::JACK_SPADES)]
+    #[case("TS", BinaryCard::TEN_SPADES)]
+    #[case("9s", BinaryCard::NINE_SPADES)]
+    #[case("8♠", BinaryCard::EIGHT_SPADES)]
+    #[case("7S", BinaryCard::SEVEN_SPADES)]
+    #[case("6♠", BinaryCard::SIX_SPADES)]
+    #[case("5S", BinaryCard::FIVE_SPADES)]
+    #[case("4♠", BinaryCard::FOUR_SPADES)]
+    #[case("3s", BinaryCard::TREY_SPADES)]
+    #[case("2S", BinaryCard::DEUCE_SPADES)]
+    #[case("A♥", BinaryCard::ACE_HEARTS)]
+    #[case("k♥", BinaryCard::KING_HEARTS)]
+    #[case("QH", BinaryCard::QUEEN_HEARTS)]
+    #[case("jh", BinaryCard::JACK_HEARTS)]
+    #[case("T♥", BinaryCard::TEN_HEARTS)]
+    #[case("9♥", BinaryCard::NINE_HEARTS)]
+    #[case("8h", BinaryCard::EIGHT_HEARTS)]
+    #[case("7H", BinaryCard::SEVEN_HEARTS)]
+    #[case("6h", BinaryCard::SIX_HEARTS)]
+    #[case("5H", BinaryCard::FIVE_HEARTS)]
+    #[case("4♥", BinaryCard::FOUR_HEARTS)]
+    #[case("3♥", BinaryCard::TREY_HEARTS)]
+    #[case("2h", BinaryCard::DEUCE_HEARTS)]
+    #[case("A♦", BinaryCard::ACE_DIAMONDS)]
+    #[case("k♦", BinaryCard::KING_DIAMONDS)]
+    #[case("Q♦", BinaryCard::QUEEN_DIAMONDS)]
+    #[case("Jd", BinaryCard::JACK_DIAMONDS)]
+    #[case("tD", BinaryCard::TEN_DIAMONDS)]
+    #[case("9♦", BinaryCard::NINE_DIAMONDS)]
+    #[case("8D", BinaryCard::EIGHT_DIAMONDS)]
+    #[case("7♦", BinaryCard::SEVEN_DIAMONDS)]
+    #[case("6D", BinaryCard::SIX_DIAMONDS)]
+    #[case("5D", BinaryCard::FIVE_DIAMONDS)]
+    #[case("4♦", BinaryCard::FOUR_DIAMONDS)]
+    #[case("3♦", BinaryCard::TREY_DIAMONDS)]
+    #[case("2d", BinaryCard::DEUCE_DIAMONDS)]
+    #[case("a♣", BinaryCard::ACE_CLUBS)]
+    #[case("k♣", BinaryCard::KING_CLUBS)]
+    #[case("QC", BinaryCard::QUEEN_CLUBS)]
+    #[case("jc", BinaryCard::JACK_CLUBS)]
+    #[case("tC", BinaryCard::TEN_CLUBS)]
+    #[case("9♣", BinaryCard::NINE_CLUBS)]
+    #[case("8♣", BinaryCard::EIGHT_CLUBS)]
+    #[case("7c", BinaryCard::SEVEN_CLUBS)]
+    #[case("6♣", BinaryCard::SIX_CLUBS)]
+    #[case("5C", BinaryCard::FIVE_CLUBS)]
+    #[case("4c", BinaryCard::FOUR_CLUBS)]
+    #[case("3C", BinaryCard::TREY_CLUBS)]
+    #[case("2C", BinaryCard::DEUCE_CLUBS)]
+    #[case("AS AH AD AC", BinaryCard::ACES)]
+    #[case("   KC  KS      KH  KD ", BinaryCard::KINGS)]
+    #[case("XX", BinaryCard::BLANK)]
+    fn from_index(#[case] index: &str, #[case] expected: BinaryCard) {
+        assert_eq!(BinaryCard::from_index(index), expected);
+    }
+
+    #[test]
+    fn from_two() {
+        let bc = BinaryCard::from_two(Two::new(CardNumber::JACK_SPADES, CardNumber::TEN_SPADES));
+
+        assert!(bc.is_valid());
+        assert!(!bc.is_single_card());
+        assert_eq!(2, bc.number_of_cards());
+        assert!(bc.has(BinaryCard::JACK_SPADES));
+        assert!(bc.has(BinaryCard::TEN_SPADES));
+    }
+
+    #[test]
+    fn from_three() {
+        let three = Three::try_from("KC QD A♠").unwrap();
+        let bc = BinaryCard::from_three(three);
+
+        assert!(bc.is_valid());
+        assert!(!bc.is_single_card());
+        assert_eq!(3, bc.number_of_cards());
+        assert!(bc.has(BinaryCard::ACE_SPADES));
+        assert!(bc.has(BinaryCard::KING_CLUBS));
+        assert!(bc.has(BinaryCard::QUEEN_DIAMONDS));
+    }
+
+    #[test]
+    fn from_four() {
+        let four = Four::try_from("KC QD A♠ JH").unwrap();
+        let bc = BinaryCard::from_four(four);
+
+        assert!(bc.is_valid());
+        assert!(!bc.is_single_card());
+        assert_eq!(4, bc.number_of_cards());
+        assert!(bc.has(BinaryCard::ACE_SPADES));
+        assert!(bc.has(BinaryCard::KING_CLUBS));
+        assert!(bc.has(BinaryCard::QUEEN_DIAMONDS));
+        assert!(bc.has(BinaryCard::JACK_HEARTS));
+    }
+
+    #[test]
+    fn from_five() {
+        let five = Five::try_from("TD KC QD A♠ JH").unwrap();
+        let bc = BinaryCard::from_five(five);
+
+        assert!(bc.is_valid());
+        assert!(!bc.is_single_card());
+        assert_eq!(5, bc.number_of_cards());
+        assert!(bc.has(BinaryCard::ACE_SPADES));
+        assert!(bc.has(BinaryCard::KING_CLUBS));
+        assert!(bc.has(BinaryCard::QUEEN_DIAMONDS));
+        assert!(bc.has(BinaryCard::JACK_HEARTS));
+        assert!(bc.has(BinaryCard::TEN_DIAMONDS));
+    }
+
+    #[test]
+    fn from_six() {
+        let six = Six::try_from("TS TD KC QD A♠ JH").unwrap();
+        let bc = BinaryCard::from_six(six);
+
+        assert!(bc.is_valid());
+        assert!(!bc.is_single_card());
+        assert_eq!(6, bc.number_of_cards());
+        assert!(bc.has(BinaryCard::ACE_SPADES));
+        assert!(bc.has(BinaryCard::KING_CLUBS));
+        assert!(bc.has(BinaryCard::QUEEN_DIAMONDS));
+        assert!(bc.has(BinaryCard::JACK_HEARTS));
+        assert!(bc.has(BinaryCard::TEN_DIAMONDS));
+        assert!(bc.has(BinaryCard::TEN_SPADES));
+    }
+
+    #[test]
+    fn from_seven() {
+        let seven = Seven::try_from("2D TS TD KC QD A♠ JH").unwrap();
+        let bc = BinaryCard::from_seven(seven);
+
+        assert!(bc.is_valid());
+        assert!(!bc.is_single_card());
+        assert_eq!(7, bc.number_of_cards());
+        assert!(bc.has(BinaryCard::ACE_SPADES));
+        assert!(bc.has(BinaryCard::KING_CLUBS));
+        assert!(bc.has(BinaryCard::QUEEN_DIAMONDS));
+        assert!(bc.has(BinaryCard::JACK_HEARTS));
+        assert!(bc.has(BinaryCard::TEN_DIAMONDS));
+        assert!(bc.has(BinaryCard::TEN_SPADES));
+        assert!(bc.has(BinaryCard::DEUCE_DIAMONDS));
+    }
+
+    #[test]
+    fn fold_in() {
+        let aces = BinaryCard::ACE_SPADES.fold_in(BinaryCard::ACE_DIAMONDS);
+        assert!(aces.has(BinaryCard::ACE_SPADES));
+        assert!(aces.has(BinaryCard::ACE_DIAMONDS));
+        assert_eq!(2, aces.number_of_cards());
+    }
 
     #[test]
     fn has() {
@@ -244,6 +481,14 @@ mod alt__bit_card {
     fn is_single_card() {
         assert!(BinaryCard::ACE_SPADES.is_single_card());
         assert!(!BinaryCard::ACES.is_single_card());
+    }
+
+    #[test]
+    fn is_valid() {
+        assert!(BinaryCard::ALL.is_valid());
+        assert!(BinaryCard::ACES.is_valid());
+        assert!(!BinaryCard::BLANK.is_valid());
+        assert!(!BinaryCard::OVERFLOW.is_valid());
     }
 
     #[test]
