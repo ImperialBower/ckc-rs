@@ -1,13 +1,13 @@
+use crate::cards::five::Five;
 use crate::cards::three::Three;
 use crate::cards::two::Two;
-use crate::cards::HandValidator;
+use crate::cards::{HandRanker, HandValidator, Permutator};
+use crate::hand_rank::HandRankValue;
 use crate::{CKCNumber, HandError, PokerCard};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Six([CKCNumber; 6]);
 
 impl Six {
@@ -111,6 +111,28 @@ impl From<[CKCNumber; 6]> for Six {
     }
 }
 
+impl HandRanker for Six {
+    fn hand_rank_value(&self) -> HandRankValue {
+        let mut best_hrv: HandRankValue = 0u16;
+
+        for perm in Six::FIVE_CARD_PERMUTATIONS {
+            let hrv = self.five_from_permutation(perm).hand_rank_value();
+            if (best_hrv == 0) || hrv != 0 && hrv < best_hrv {
+                best_hrv = hrv;
+            }
+        }
+
+        best_hrv
+    }
+
+    fn hand_rank_value_validated(&self) -> HandRankValue {
+        if !self.is_valid() {
+            return crate::hand_rank::NO_HAND_RANK_VALUE;
+        }
+        self.hand_rank_value()
+    }
+}
+
 impl HandValidator for Six {
     fn are_unique(&self) -> bool {
         let sorted = self.sort();
@@ -144,6 +166,18 @@ impl HandValidator for Six {
     }
 }
 
+impl Permutator for Six {
+    fn five_from_permutation(&self, permutation: [u8; 5]) -> Five {
+        Five::new(
+            self.0[permutation[0] as usize],
+            self.0[permutation[1] as usize],
+            self.0[permutation[2] as usize],
+            self.0[permutation[3] as usize],
+            self.0[permutation[4] as usize],
+        )
+    }
+}
+
 impl TryFrom<&'static str> for Six {
     type Error = HandError;
 
@@ -160,6 +194,52 @@ impl TryFrom<&'static str> for Six {
 mod cards_six_tests {
     use super::*;
     use crate::CardNumber;
+
+    #[test]
+    fn five_from_permutation() {
+        let six = Six::try_from("A♠ K♠ Q♠ J♠ T♠ 9♠").unwrap();
+
+        assert_eq!(
+            six.five_from_permutation(Six::FIVE_CARD_PERMUTATIONS[0]),
+            Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap()
+        );
+        assert_eq!(
+            six.five_from_permutation(Six::FIVE_CARD_PERMUTATIONS[1]),
+            Five::try_from("A♠ K♠ Q♠ J♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            six.five_from_permutation(Six::FIVE_CARD_PERMUTATIONS[2]),
+            Five::try_from("A♠ K♠ Q♠ T♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            six.five_from_permutation(Six::FIVE_CARD_PERMUTATIONS[3]),
+            Five::try_from("A♠ K♠ J♠ T♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            six.five_from_permutation(Six::FIVE_CARD_PERMUTATIONS[4]),
+            Five::try_from("A♠ Q♠ J♠ T♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            six.five_from_permutation(Six::FIVE_CARD_PERMUTATIONS[5]),
+            Five::try_from("K♠ Q♠ J♠ T♠ 9♠").unwrap()
+        );
+    }
+
+    #[test]
+    fn hand_rank_value() {
+        assert_eq!(1, Six::try_from("T♠ A♠ K♠ J♠ Q♠ 9♠").unwrap().hand_rank_value());
+        assert_eq!(2, Six::try_from("T♠ 8♠ K♠ J♠ Q♠ 9♠").unwrap().hand_rank_value());
+        assert_eq!(3, Six::try_from("T♠ 8♠ 7♠ J♠ Q♠ 9♠").unwrap().hand_rank_value());
+        assert_eq!(7450, Six::try_from("8D 7C 5D 4♥ 3D 2D").unwrap().hand_rank_value());
+    }
+
+    #[test]
+    fn hand_rank_value_validated() {
+        assert_eq!(
+            0,
+            Six::try_from("8D 8D 5D 4♥ 3D 2D").unwrap().hand_rank_value_validated()
+        );
+    }
 
     #[test]
     fn sort() {

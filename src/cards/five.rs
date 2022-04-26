@@ -1,12 +1,10 @@
-use crate::cards::HandValidator;
-use crate::hand_rank::{HandRank, HandRankValue};
+use crate::cards::{HandRanker, HandValidator};
+use crate::hand_rank::HandRankValue;
 use crate::{CKCNumber, CardNumber, HandError, PokerCard};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Five([CKCNumber; 5]);
 
 impl Five {
@@ -15,6 +13,11 @@ impl Five {
     /// if it's not a wheel (5♥ 4♥ 3♥ 2♠ A♠).
     pub const STRAIGHT_PADDING: u32 = 27;
     pub const WHEEL_OR_BITS: u32 = 4111;
+
+    #[must_use]
+    pub fn new(first: CKCNumber, second: CKCNumber, third: CKCNumber, forth: CKCNumber, fifth: CKCNumber) -> Self {
+        Self([first, second, third, forth, fifth])
+    }
 
     //region accessors
 
@@ -75,43 +78,6 @@ impl Five {
         let fifth = CKCNumber::from_index(esses.next()?);
         let hand: [CKCNumber; 5] = [first, second, third, forth, fifth];
         Some(hand)
-    }
-
-    //region evaluate
-
-    #[must_use]
-    pub fn hand_rank(&self) -> HandRank {
-        HandRank::from(self.hand_rank_value())
-    }
-
-    #[must_use]
-    pub fn hand_rank_validated(&self) -> HandRank {
-        HandRank::from(self.hand_rank_value_validated())
-    }
-
-    #[must_use]
-    pub fn hand_rank_value(&self) -> HandRankValue {
-        let i = self.or_rank_bits() as usize;
-
-        if self.is_flush() {
-            return crate::lookups::FLUSHES[i];
-        }
-
-        // Continue to evaluate if it's not a flush and the cards aren't
-        // unique (straight or high card).
-        let unique = Five::unique(i);
-        match unique {
-            0 => self.not_unique(),
-            _ => unique,
-        }
-    }
-
-    #[must_use]
-    pub fn hand_rank_value_validated(&self) -> HandRankValue {
-        if !self.is_valid() {
-            return crate::hand_rank::NO_HAND_RANK_VALUE;
-        }
-        self.hand_rank_value()
     }
 
     #[must_use]
@@ -208,6 +174,31 @@ impl From<[CKCNumber; 5]> for Five {
     }
 }
 
+impl HandRanker for Five {
+    fn hand_rank_value(&self) -> HandRankValue {
+        let i = self.or_rank_bits() as usize;
+
+        if self.is_flush() {
+            return crate::lookups::FLUSHES[i];
+        }
+
+        // Continue to evaluate if it's not a flush and the cards aren't
+        // unique (straight or high card).
+        let unique = Five::unique(i);
+        match unique {
+            0 => self.not_unique(),
+            _ => unique,
+        }
+    }
+
+    fn hand_rank_value_validated(&self) -> HandRankValue {
+        if !self.is_valid() {
+            return crate::hand_rank::NO_HAND_RANK_VALUE;
+        }
+        self.hand_rank_value()
+    }
+}
+
 impl HandValidator for Five {
     // TODO: macro?
     fn are_unique(&self) -> bool {
@@ -252,8 +243,6 @@ mod cards__five_tests {
     use crate::hand_rank::{HandRankClass, HandRankName};
     use crate::CardNumber;
     use alloc::format;
-    use rstest::rstest;
-
     #[rustfmt::skip]
     #[rstest]
     #[case("A♠ K♠ Q♠ J♠ T♠", 1, HandRankName::StraightFlush, HandRankClass::RoyalFlush)]
@@ -2044,10 +2033,20 @@ mod cards__five_tests {
     #[case("TD 9C 8D 7C 5S", 7342, HandRankName::HighCard, HandRankClass::TenHigh)]
     #[case("TD 5D 4♥ 3D 2D", 7410, HandRankName::HighCard, HandRankClass::TenHigh)]
     #[case("9C 8D 7C 6S 4D", 7411, HandRankName::HighCard, HandRankClass::NineHigh)]
+    #[case("9C 8D 7C 6S 3D", 7412, HandRankName::HighCard, HandRankClass::NineHigh)]
+    #[case("9C 8D 7C 6S 2D", 7413, HandRankName::HighCard, HandRankClass::NineHigh)]
+    #[case("9C 8D 7C 5S 4D", 7414, HandRankName::HighCard, HandRankClass::NineHigh)]
     #[case("9D 5D 4♥ 3D 2D", 7444, HandRankName::HighCard, HandRankClass::NineHigh)]
     #[case("8D 7C 6S 5D 3H", 7445, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 6S 5D 2H", 7446, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 6S 4D 3H", 7447, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 6S 4D 2H", 7448, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 6S 3D 2H", 7449, HandRankName::HighCard, HandRankClass::EightHigh)]
+    #[case("8D 7C 5S 4D 3H", 7450, HandRankName::HighCard, HandRankClass::EightHigh)]
     #[case("8D 5D 4♥ 3D 2D", 7458, HandRankName::HighCard, HandRankClass::EightHigh)]
     #[case("7C 6S 5D 4H 2C", 7459, HandRankName::HighCard, HandRankClass::SevenHigh)]
+    #[case("7D 6D 5♥ 3D 2D", 7460, HandRankName::HighCard, HandRankClass::SevenHigh)]
+    #[case("7D 6D 4♥ 3D 2D", 7461, HandRankName::HighCard, HandRankClass::SevenHigh)]
     #[case("7D 5D 4♥ 3D 2D", 7462, HandRankName::HighCard, HandRankClass::SevenHigh)]
     #[case("A♠ A♠ Q♠ J♠ T♠", 0, HandRankName::Invalid, HandRankClass::Invalid)]
     fn hand_rank_value(
@@ -2066,12 +2065,23 @@ mod cards__five_tests {
         assert_eq!(expected_class, hand_rank.class);
     }
 
+    use rstest::rstest;
+
+    #[test]
+    fn new() {
+        let five = Five::new(
+            CardNumber::ACE_SPADES,
+            CardNumber::KING_SPADES,
+            CardNumber::QUEEN_SPADES,
+            CardNumber::JACK_SPADES,
+            CardNumber::TEN_SPADES,
+        );
+        assert_eq!(five.hand_rank_value(), 1);
+    }
+
     #[test]
     fn hand_rank_value__royal_flush() {
-        assert_eq!(
-            1,
-            Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().hand_rank_value()
-        );
+        assert_eq!(1, Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().hand_rank_value());
     }
 
     #[test]
@@ -2085,30 +2095,12 @@ mod cards__five_tests {
         assert_eq!(CardNumber::QUEEN_SPADES, hand.third());
         assert_eq!(CardNumber::JACK_SPADES, hand.forth());
         assert_eq!(CardNumber::TEN_SPADES, hand.fifth());
-        assert_eq!(
-            "00010000000000001000110000101001",
-            format!("{:032b}", hand.first())
-        );
-        assert_eq!(
-            "00001000000000001000101100100101",
-            format!("{:032b}", hand.second())
-        );
-        assert_eq!(
-            "00000100000000001000101000011111",
-            format!("{:032b}", hand.third())
-        );
-        assert_eq!(
-            "00000010000000001000100100011101",
-            format!("{:032b}", hand.forth())
-        );
-        assert_eq!(
-            "00000001000000001000100000010111",
-            format!("{:032b}", hand.fifth())
-        );
-        assert_eq!(
-            "00000000000000001000100000000001",
-            format!("{:032b}", and_bits)
-        );
+        assert_eq!("00010000000000001000110000101001", format!("{:032b}", hand.first()));
+        assert_eq!("00001000000000001000101100100101", format!("{:032b}", hand.second()));
+        assert_eq!("00000100000000001000101000011111", format!("{:032b}", hand.third()));
+        assert_eq!("00000010000000001000100100011101", format!("{:032b}", hand.forth()));
+        assert_eq!("00000001000000001000100000010111", format!("{:032b}", hand.fifth()));
+        assert_eq!("00000000000000001000100000000001", format!("{:032b}", and_bits));
     }
 
     #[test]
@@ -2139,19 +2131,13 @@ mod cards__five_tests {
 
     #[test]
     fn is_straight_flush() {
-        assert!(Five::try_from("A♠ K♠ Q♠ J♠ T♠")
-            .unwrap()
-            .is_straight_flush());
-        assert!(Five::try_from("K♠ Q♠ J♠ T♠ 9♠")
-            .unwrap()
-            .is_straight_flush());
+        assert!(Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().is_straight_flush());
+        assert!(Five::try_from("K♠ Q♠ J♠ T♠ 9♠").unwrap().is_straight_flush());
     }
 
     #[test]
     fn is_straight_false() {
-        assert!(!Five::try_from("A♠ K♥ Q♠ J♠ T♠")
-            .unwrap()
-            .is_straight_flush());
+        assert!(!Five::try_from("A♠ K♥ Q♠ J♠ T♠").unwrap().is_straight_flush());
     }
 
     #[test]

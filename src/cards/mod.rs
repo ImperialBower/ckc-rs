@@ -1,12 +1,28 @@
+use crate::cards::five::Five;
 use crate::{CKCNumber, CardNumber};
 use core::slice::Iter;
 
+pub mod binary_card;
 pub mod five;
 pub mod four;
 pub mod seven;
 pub mod six;
 pub mod three;
 pub mod two;
+
+pub trait HandRanker {
+    fn hand_rank(&self) -> crate::hand_rank::HandRank {
+        crate::hand_rank::HandRank::from(self.hand_rank_value())
+    }
+
+    fn hand_rank_validated(&self) -> crate::hand_rank::HandRank {
+        crate::hand_rank::HandRank::from(self.hand_rank_value_validated())
+    }
+
+    fn hand_rank_value(&self) -> crate::hand_rank::HandRankValue;
+
+    fn hand_rank_value_validated(&self) -> crate::hand_rank::HandRankValue;
+}
 
 pub trait HandValidator {
     fn are_unique(&self) -> bool;
@@ -25,8 +41,7 @@ pub trait HandValidator {
     /// A corrupt hand is one where any of the values in the array doesn't correspond to any
     /// recognized `CardNumber` or is blank.
     fn is_corrupt(&self) -> bool {
-        self.iter()
-            .any(|c| CardNumber::filter(*c) == CardNumber::BLANK)
+        self.iter().any(|c| CardNumber::filter(*c) == CardNumber::BLANK)
     }
 
     fn is_valid(&self) -> bool {
@@ -34,4 +49,8 @@ pub trait HandValidator {
     }
 
     fn iter(&self) -> Iter<'_, CKCNumber>;
+}
+
+pub trait Permutator {
+    fn five_from_permutation(&self, permutation: [u8; 5]) -> Five;
 }
