@@ -83,6 +83,11 @@ impl Two {
     }
 
     #[must_use]
+    pub fn is_connector(&self) -> bool {
+        self.get_gap() == 0
+    }
+
+    #[must_use]
     pub fn is_pocket_pair(&self) -> bool {
         self.first().get_card_rank() == self.second().get_card_rank()
     }
@@ -90,6 +95,11 @@ impl Two {
     #[must_use]
     pub fn is_suited(&self) -> bool {
         self.first().get_card_suit() == self.second().get_card_suit()
+    }
+
+    #[must_use]
+    pub fn is_suited_connector(&self) -> bool {
+        self.is_suited() && self.is_connector()
     }
 
     fn from_index(index: &str) -> Option<[CKCNumber; 2]> {
@@ -100,6 +110,21 @@ impl Two {
         let hand: [CKCNumber; 2] = [first, second];
         Some(hand)
     }
+
+    //region vs
+    //endregion -> Result Preflop <-
+
+    // pub fn types() -> Vec<&str> {
+    //     vec![
+    //         "A♠ A♥ A♦ A♣",  // EQUALS
+    //         "A♠ A♥ A♦ K♦",  // Dominated / Connector / Suited
+    //         "A♠ A♥ A♦ K♠",  // Dominated / Partially Covered / Connector / Off
+    //         "A♠ A♥ K♠ K♥",  // Dominated / Covered / Connector / Off
+    //         "A♠ A♥ K♠ K♥",  // Dominated / Covered / Connector / Off
+    //     ]
+    // }
+
+    //endregion
 }
 
 impl From<&[CKCNumber; 2]> for Two {
@@ -242,15 +267,30 @@ mod cards_two_tests {
     }
 
     #[test]
+    fn is_connector() {
+        assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_connector());
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::DEUCE_CLUBS).is_connector());
+    }
+
+    #[test]
     fn is_pocket_pair() {
-        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_pocket_pair());
         assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::ACE_SPADES).is_pocket_pair());
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_pocket_pair());
     }
 
     #[test]
     fn is_suited() {
-        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_suited());
         assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_CLUBS).is_suited());
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_suited());
+    }
+
+    #[test]
+    fn is_suited_connector() {
+        assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_CLUBS).is_suited_connector());
+        assert!(Two::new(CardNumber::NINE_CLUBS, CardNumber::EIGHT_CLUBS).is_suited_connector());
+        assert!(!Two::new(CardNumber::NINE_CLUBS, CardNumber::EIGHT_DIAMONDS).is_suited_connector());
+        assert!(!Two::new(CardNumber::NINE_CLUBS, CardNumber::SEVEN_CLUBS).is_suited_connector());
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_suited_connector());
     }
 
     #[test]
