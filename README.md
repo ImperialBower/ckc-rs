@@ -51,3 +51,8 @@ and [wasm](https://rustwasm.github.io/docs/book/) Rust.
     * Ferrous Systems
       * [no_std async/await - soon on stable](https://ferrous-systems.com/blog/stable-async-on-embedded/)
       * [Concurrency Patterns in Embedded Rust](https://ferrous-systems.com/blog/embedded-concurrency-patterns/)
+* Heads Up
+  * [Cepheus Poker Project](http://poker.srv.ualberta.ca/)
+  * [HeadsUp Push/Fold Nash Equilibrium](https://www.holdemresources.net/hune)
+  * [Limit Hold’em Heads-Up Tournament Strategy](https://www.headsuphyper.com/limit-holdem-heads-up-strategy/)
+  * [Nash's ICM calculation](https://poker.stackexchange.com/questions/1022/nashs-icm-calculation)
