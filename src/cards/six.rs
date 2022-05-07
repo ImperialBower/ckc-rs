@@ -112,17 +112,20 @@ impl From<[CKCNumber; 6]> for Six {
 }
 
 impl HandRanker for Six {
-    fn hand_rank_value(&self) -> HandRankValue {
+    fn hand_rank_value_and_hand(&self) -> (HandRankValue, Five) {
         let mut best_hrv: HandRankValue = 0u16;
+        let mut best_hand = Five::default();
 
         for perm in Six::FIVE_CARD_PERMUTATIONS {
-            let hrv = self.five_from_permutation(perm).hand_rank_value();
+            let hand = self.five_from_permutation(perm);
+            let hrv = hand.hand_rank_value();
             if (best_hrv == 0) || hrv != 0 && hrv < best_hrv {
                 best_hrv = hrv;
+                best_hand = hand;
             }
         }
 
-        best_hrv
+        (best_hrv, best_hand.sort())
     }
 
     fn hand_rank_value_validated(&self) -> HandRankValue {

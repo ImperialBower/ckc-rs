@@ -19,7 +19,12 @@ pub trait HandRanker {
         crate::hand_rank::HandRank::from(self.hand_rank_value_validated())
     }
 
-    fn hand_rank_value(&self) -> crate::hand_rank::HandRankValue;
+    fn hand_rank_value(&self) -> crate::hand_rank::HandRankValue {
+        let (hrv, _) = self.hand_rank_value_and_hand();
+        hrv
+    }
+
+    fn hand_rank_value_and_hand(&self) -> (crate::hand_rank::HandRankValue, Five);
 
     fn hand_rank_value_validated(&self) -> crate::hand_rank::HandRankValue;
 }

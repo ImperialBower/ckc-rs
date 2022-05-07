@@ -137,17 +137,20 @@ impl From<[CKCNumber; 7]> for Seven {
 }
 
 impl HandRanker for Seven {
-    fn hand_rank_value(&self) -> HandRankValue {
+    fn hand_rank_value_and_hand(&self) -> (HandRankValue, Five) {
         let mut best_hrv: HandRankValue = 0u16;
+        let mut best_hand = Five::default();
 
         for perm in Seven::FIVE_CARD_PERMUTATIONS {
-            let hrv = self.five_from_permutation(perm).hand_rank_value();
+            let hand = self.five_from_permutation(perm);
+            let hrv = hand.hand_rank_value();
             if (best_hrv == 0) || hrv != 0 && hrv < best_hrv {
                 best_hrv = hrv;
+                best_hand = hand;
             }
         }
 
-        best_hrv
+        (best_hrv, best_hand.sort())
     }
 
     fn hand_rank_value_validated(&self) -> HandRankValue {
@@ -293,6 +296,16 @@ mod cards_seven_tests {
         assert_eq!(2, Seven::try_from("T♠ 8♠ K♠ J♠ Q♠ 9♠ 7♠").unwrap().hand_rank_value());
         assert_eq!(3, Seven::try_from("T♠ 8♠ 7♠ J♠ 6♠ Q♠ 9♠").unwrap().hand_rank_value());
         assert_eq!(7414, Seven::try_from("9S 8D 7C 5D 4♥ 3D 2D").unwrap().hand_rank_value());
+    }
+
+    #[test]
+    fn hand_rank_value_and_hand() {
+        let (value, hand) = Seven::try_from("T♠ A♠ K♠ J♠ Q♠ 9♠ 8♠")
+            .unwrap()
+            .hand_rank_value_and_hand();
+
+        assert_eq!(hand, Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap());
+        assert_eq!(value, 1);
     }
 
     #[test]

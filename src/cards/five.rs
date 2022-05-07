@@ -175,20 +175,22 @@ impl From<[CKCNumber; 5]> for Five {
 }
 
 impl HandRanker for Five {
-    fn hand_rank_value(&self) -> HandRankValue {
+    fn hand_rank_value_and_hand(&self) -> (HandRankValue, Five) {
         let i = self.or_rank_bits() as usize;
 
-        if self.is_flush() {
-            return crate::lookups::FLUSHES[i];
-        }
+        let hrv: HandRankValue = if self.is_flush() {
+            crate::lookups::FLUSHES[i]
+        } else {
+            // Continue to evaluate if it's not a flush and the cards aren't
+            // unique (straight or high card).
+            let unique = Five::unique(i);
+            match unique {
+                0 => self.not_unique(),
+                _ => unique,
+            }
+        };
 
-        // Continue to evaluate if it's not a flush and the cards aren't
-        // unique (straight or high card).
-        let unique = Five::unique(i);
-        match unique {
-            0 => self.not_unique(),
-            _ => unique,
-        }
+        (hrv, *self)
     }
 
     fn hand_rank_value_validated(&self) -> HandRankValue {
