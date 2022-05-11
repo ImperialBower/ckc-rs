@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::{BinaryCard, CKCNumber, HandError, PokerCard, BC64};
+use crate::{BinaryCard, CKCNumber, HandError, PokerCard, Shifty, BC64};
 use core::cmp;
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,15 @@ impl Two {
     #[must_use]
     pub fn new(first: CKCNumber, second: CKCNumber) -> Self {
         Self([first, second])
+    }
+
+    fn from_index(index: &str) -> Option<[CKCNumber; 2]> {
+        let mut esses = index.split_whitespace();
+
+        let first = CKCNumber::from_index(esses.next()?);
+        let second = CKCNumber::from_index(esses.next()?);
+        let hand: [CKCNumber; 2] = [first, second];
+        Some(hand)
     }
 
     //region accessors
@@ -102,15 +111,6 @@ impl Two {
         self.is_suited() && self.is_connector()
     }
 
-    fn from_index(index: &str) -> Option<[CKCNumber; 2]> {
-        let mut esses = index.split_whitespace();
-
-        let first = CKCNumber::from_index(esses.next()?);
-        let second = CKCNumber::from_index(esses.next()?);
-        let hand: [CKCNumber; 2] = [first, second];
-        Some(hand)
-    }
-
     //region vs
     //endregion -> Result Preflop <-
 
@@ -198,6 +198,12 @@ impl HandValidator for Two {
 
     fn iter(&self) -> Iter<'_, CKCNumber> {
         self.0.iter()
+    }
+}
+
+impl Shifty for Two {
+    fn shift_suit(&self) -> Self {
+        Two::new(self.first().shift_suit(), self.second().shift_suit())
     }
 }
 
@@ -291,6 +297,14 @@ mod cards_two_tests {
         assert!(!Two::new(CardNumber::NINE_CLUBS, CardNumber::EIGHT_DIAMONDS).is_suited_connector());
         assert!(!Two::new(CardNumber::NINE_CLUBS, CardNumber::SEVEN_CLUBS).is_suited_connector());
         assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_suited_connector());
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Two::try_from("AS AD").unwrap().shift_suit(),
+            Two::try_from("AH AC").unwrap()
+        )
     }
 
     #[test]

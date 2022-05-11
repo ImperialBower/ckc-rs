@@ -713,6 +713,16 @@ pub trait PokerCard {
         self.as_u32() | CardNumber::QUADS
     }
 
+    fn next_suit(&self) -> CardSuit {
+        match self.get_card_suit() {
+            CardSuit::SPADES => CardSuit::HEARTS,
+            CardSuit::HEARTS => CardSuit::DIAMONDS,
+            CardSuit::DIAMONDS => CardSuit::CLUBS,
+            CardSuit::CLUBS => CardSuit::SPADES,
+            CardSuit::BLANK => CardSuit::BLANK,
+        }
+    }
+
     fn strip_multiples_flags(&self) -> CKCNumber {
         CardNumber::MULTIPLES_FILTER & self.as_u32()
     }
@@ -727,6 +737,23 @@ impl PokerCard for CKCNumber {
 
     fn is_blank(&self) -> bool {
         *self == CardNumber::BLANK
+    }
+}
+
+/// Trait that shifts the suit of a card to the next one down. Spades to hearts;
+/// hearts to diamonds, diamonds to clubs, and clubs back to spades.
+///
+/// This is used for analysis. Since no suit is better than another from an evaluation
+/// perspective, the odds calculated for cards of any suit should be the same if all
+/// the cards are shifted.
+pub trait Shifty {
+    #[must_use]
+    fn shift_suit(&self) -> Self;
+}
+
+impl Shifty for CKCNumber {
+    fn shift_suit(&self) -> Self {
+        CKCNumber::create(self.get_card_rank(), self.next_suit())
     }
 }
 
@@ -983,6 +1010,24 @@ mod poker_card_tests {
     #[test]
     fn flag_as_quads() {
         assert_eq!(2_415_954_985, CardNumber::ACE_SPADES.flag_as_quads());
+    }
+
+    #[test]
+    fn next_suit() {
+        assert_eq!(CardNumber::TEN_SPADES.next_suit(), CardSuit::HEARTS);
+        assert_eq!(CardNumber::TEN_HEARTS.next_suit(), CardSuit::DIAMONDS);
+        assert_eq!(CardNumber::TEN_DIAMONDS.next_suit(), CardSuit::CLUBS);
+        assert_eq!(CardNumber::TEN_CLUBS.next_suit(), CardSuit::SPADES);
+        assert_eq!(CardNumber::BLANK.next_suit(), CardSuit::BLANK);
+    }
+
+    #[test]
+    fn shift_suit() {
+        assert_eq!(CardNumber::ACE_SPADES.shift_suit(), CardNumber::ACE_HEARTS);
+        assert_eq!(CardNumber::ACE_HEARTS.shift_suit(), CardNumber::ACE_DIAMONDS);
+        assert_eq!(CardNumber::ACE_DIAMONDS.shift_suit(), CardNumber::ACE_CLUBS);
+        assert_eq!(CardNumber::ACE_CLUBS.shift_suit(), CardNumber::ACE_SPADES);
+        assert_eq!(CardNumber::BLANK.shift_suit(), CardNumber::BLANK);
     }
 
     #[test]
