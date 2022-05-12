@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::{CKCNumber, HandError, PokerCard, Shifty};
 use core::slice::Iter;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -87,6 +87,12 @@ impl HandValidator for Three {
 
     fn iter(&self) -> Iter<'_, CKCNumber> {
         self.0.iter()
+    }
+}
+
+impl Shifty for Three {
+    fn shift_suit(&self) -> Self {
+        Three([self.first().shift_suit(), self.second().shift_suit(), self.third().shift_suit()])
     }
 }
 
