@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::{BinaryCard, CKCNumber, HandError, PokerCard, BC64};
+use crate::{BinaryCard, CKCNumber, HandError, PokerCard, Shifty, BC64};
 use core::cmp;
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
@@ -11,6 +11,15 @@ impl Two {
     #[must_use]
     pub fn new(first: CKCNumber, second: CKCNumber) -> Self {
         Self([first, second])
+    }
+
+    fn from_index(index: &str) -> Option<[CKCNumber; 2]> {
+        let mut esses = index.split_whitespace();
+
+        let first = CKCNumber::from_index(esses.next()?);
+        let second = CKCNumber::from_index(esses.next()?);
+        let hand: [CKCNumber; 2] = [first, second];
+        Some(hand)
     }
 
     //region accessors
@@ -83,6 +92,11 @@ impl Two {
     }
 
     #[must_use]
+    pub fn is_connector(&self) -> bool {
+        self.get_gap() == 0
+    }
+
+    #[must_use]
     pub fn is_pocket_pair(&self) -> bool {
         self.first().get_card_rank() == self.second().get_card_rank()
     }
@@ -92,14 +106,25 @@ impl Two {
         self.first().get_card_suit() == self.second().get_card_suit()
     }
 
-    fn from_index(index: &str) -> Option<[CKCNumber; 2]> {
-        let mut esses = index.split_whitespace();
-
-        let first = CKCNumber::from_index(esses.next()?);
-        let second = CKCNumber::from_index(esses.next()?);
-        let hand: [CKCNumber; 2] = [first, second];
-        Some(hand)
+    #[must_use]
+    pub fn is_suited_connector(&self) -> bool {
+        self.is_suited() && self.is_connector()
     }
+
+    //region vs
+    //endregion -> Result Preflop <-
+
+    // pub fn types() -> Vec<&str> {
+    //     vec![
+    //         "A♠ A♥ A♦ A♣",  // EQUALS
+    //         "A♠ A♥ A♦ K♦",  // Dominated / Connector / Suited
+    //         "A♠ A♥ A♦ K♠",  // Dominated / Partially Covered / Connector / Off
+    //         "A♠ A♥ K♠ K♥",  // Dominated / Covered / Connector / Off
+    //         "A♠ A♥ K♠ K♥",  // Dominated / Covered / Connector / Off
+    //     ]
+    // }
+
+    //endregion
 }
 
 impl From<&[CKCNumber; 2]> for Two {
@@ -176,6 +201,12 @@ impl HandValidator for Two {
     }
 }
 
+impl Shifty for Two {
+    fn shift_suit(&self) -> Self {
+        Two::new(self.first().shift_suit(), self.second().shift_suit())
+    }
+}
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod cards_two_tests {
@@ -242,15 +273,38 @@ mod cards_two_tests {
     }
 
     #[test]
+    fn is_connector() {
+        assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_connector());
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::DEUCE_CLUBS).is_connector());
+    }
+
+    #[test]
     fn is_pocket_pair() {
-        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_pocket_pair());
         assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::ACE_SPADES).is_pocket_pair());
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_pocket_pair());
     }
 
     #[test]
     fn is_suited() {
-        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_suited());
         assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_CLUBS).is_suited());
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_suited());
+    }
+
+    #[test]
+    fn is_suited_connector() {
+        assert!(Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_CLUBS).is_suited_connector());
+        assert!(Two::new(CardNumber::NINE_CLUBS, CardNumber::EIGHT_CLUBS).is_suited_connector());
+        assert!(!Two::new(CardNumber::NINE_CLUBS, CardNumber::EIGHT_DIAMONDS).is_suited_connector());
+        assert!(!Two::new(CardNumber::NINE_CLUBS, CardNumber::SEVEN_CLUBS).is_suited_connector());
+        assert!(!Two::new(CardNumber::ACE_CLUBS, CardNumber::KING_SPADES).is_suited_connector());
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Two::try_from("AS AD").unwrap().shift_suit(),
+            Two::try_from("AH AC").unwrap()
+        )
     }
 
     #[test]

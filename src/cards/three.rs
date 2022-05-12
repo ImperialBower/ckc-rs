@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::{CKCNumber, HandError, PokerCard, Shifty};
 use core::slice::Iter;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -90,6 +90,16 @@ impl HandValidator for Three {
     }
 }
 
+impl Shifty for Three {
+    fn shift_suit(&self) -> Self {
+        Three([
+            self.first().shift_suit(),
+            self.second().shift_suit(),
+            self.third().shift_suit(),
+        ])
+    }
+}
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod cards_three_tests {
@@ -149,5 +159,13 @@ mod cards_three_tests {
         let three = Three::try_from("A♠ K♠");
 
         assert!(three.is_err());
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Three::try_from("A♠ K♠ Q♠").unwrap().shift_suit(),
+            Three::try_from("AH KH QH").unwrap()
+        )
     }
 }
