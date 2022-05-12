@@ -92,7 +92,11 @@ impl HandValidator for Three {
 
 impl Shifty for Three {
     fn shift_suit(&self) -> Self {
-        Three([self.first().shift_suit(), self.second().shift_suit(), self.third().shift_suit()])
+        Three([
+            self.first().shift_suit(),
+            self.second().shift_suit(),
+            self.third().shift_suit(),
+        ])
     }
 }
 
@@ -155,5 +159,13 @@ mod cards_three_tests {
         let three = Three::try_from("A♠ K♠");
 
         assert!(three.is_err());
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Three::try_from("A♠ K♠ Q♠").unwrap().shift_suit(),
+            Three::try_from("AH KH QH").unwrap()
+        )
     }
 }

@@ -3,7 +3,7 @@ use crate::cards::three::Three;
 use crate::cards::two::Two;
 use crate::cards::{HandRanker, HandValidator, Permutator};
 use crate::hand_rank::HandRankValue;
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::{CKCNumber, HandError, PokerCard, Shifty};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
@@ -181,6 +181,19 @@ impl Permutator for Six {
     }
 }
 
+impl Shifty for Six {
+    fn shift_suit(&self) -> Self {
+        Six([
+            self.first().shift_suit(),
+            self.second().shift_suit(),
+            self.third().shift_suit(),
+            self.forth().shift_suit(),
+            self.fifth().shift_suit(),
+            self.sixth().shift_suit(),
+        ])
+    }
+}
+
 impl TryFrom<&'static str> for Six {
     type Error = HandError;
 
@@ -266,6 +279,14 @@ mod cards_six_tests {
         assert!(six.contain_blank());
         assert!(!six.are_unique());
         assert!(!six.is_valid());
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Six::try_from("T♠ A♠ K♠ J♠ Q♠ 9♠").unwrap().shift_suit(),
+            Six::try_from("T♥ A♥ K♥ J♥ Q♥ 9♥").unwrap()
+        )
     }
 
     #[test]

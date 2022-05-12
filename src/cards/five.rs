@@ -1,6 +1,6 @@
 use crate::cards::{HandRanker, HandValidator};
 use crate::hand_rank::HandRankValue;
-use crate::{CKCNumber, CardNumber, HandError, PokerCard};
+use crate::{CKCNumber, CardNumber, HandError, PokerCard, Shifty};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
@@ -235,6 +235,18 @@ impl TryFrom<&'static str> for Five {
             None => Err(HandError::InvalidIndex),
             Some(five) => Ok(Five::from(five)),
         }
+    }
+}
+
+impl Shifty for Five {
+    fn shift_suit(&self) -> Self {
+        Five([
+            self.first().shift_suit(),
+            self.second().shift_suit(),
+            self.third().shift_suit(),
+            self.forth().shift_suit(),
+            self.fifth().shift_suit(),
+        ])
     }
 }
 
@@ -2289,5 +2301,13 @@ mod cards__five_tests {
         let five = Five::try_from("A♠ K♠ Q♠ J♠");
 
         assert!(five.is_err());
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Five::try_from("4♥ 4D 2S 2C A♥").unwrap().shift_suit(),
+            Five::try_from("4D 4C 2H 2S AD").unwrap()
+        )
     }
 }

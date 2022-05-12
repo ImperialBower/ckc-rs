@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::{CKCNumber, HandError, PokerCard, Shifty};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
@@ -108,6 +108,17 @@ impl TryFrom<&'static str> for Four {
     }
 }
 
+impl Shifty for Four {
+    fn shift_suit(&self) -> Self {
+        Four([
+            self.first().shift_suit(),
+            self.second().shift_suit(),
+            self.third().shift_suit(),
+            self.forth().shift_suit(),
+        ])
+    }
+}
+
 #[cfg(test)]
 #[allow(non_snake_case)]
 mod cards_four_tests {
@@ -170,5 +181,13 @@ mod cards_four_tests {
         let four = Four::try_from("A♠ K♠ Q♠");
 
         assert!(four.is_err());
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Four::try_from("AH KH QH JH").unwrap().shift_suit(),
+            Four::try_from("AD KD QD JD").unwrap()
+        )
     }
 }
