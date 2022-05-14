@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::{BinaryCard, CKCNumber, HandError, PokerCard, Shifty, BC64};
+use crate::{BinaryCard, CKCNumber, CardNumber, HandError, PokerCard, Shifty, BC64};
 use core::cmp;
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
@@ -7,7 +7,39 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Two([CKCNumber; 2]);
 
+#[allow(non_upper_case_globals)]
 impl Two {
+    //region hands
+    pub const AA: [Two; 6] = [
+        Two([CardNumber::ACE_SPADES, CardNumber::ACE_HEARTS]),
+        Two([CardNumber::ACE_SPADES, CardNumber::ACE_DIAMONDS]),
+        Two([CardNumber::ACE_SPADES, CardNumber::ACE_CLUBS]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::ACE_DIAMONDS]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::ACE_CLUBS]),
+        Two([CardNumber::ACE_DIAMONDS, CardNumber::ACE_CLUBS]),
+    ];
+    pub const AKs: [Two; 4] = [
+        Two([CardNumber::ACE_SPADES, CardNumber::KING_SPADES]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::KING_HEARTS]),
+        Two([CardNumber::ACE_DIAMONDS, CardNumber::KING_DIAMONDS]),
+        Two([CardNumber::ACE_CLUBS, CardNumber::KING_CLUBS]),
+    ];
+    pub const AKo: [Two; 12] = [
+        Two([CardNumber::ACE_SPADES, CardNumber::KING_HEARTS]),
+        Two([CardNumber::ACE_SPADES, CardNumber::KING_DIAMONDS]),
+        Two([CardNumber::ACE_SPADES, CardNumber::KING_CLUBS]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::KING_SPADES]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::KING_DIAMONDS]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::KING_CLUBS]),
+        Two([CardNumber::ACE_DIAMONDS, CardNumber::KING_SPADES]),
+        Two([CardNumber::ACE_DIAMONDS, CardNumber::KING_HEARTS]),
+        Two([CardNumber::ACE_DIAMONDS, CardNumber::KING_CLUBS]),
+        Two([CardNumber::ACE_CLUBS, CardNumber::KING_SPADES]),
+        Two([CardNumber::ACE_CLUBS, CardNumber::KING_HEARTS]),
+        Two([CardNumber::ACE_CLUBS, CardNumber::KING_DIAMONDS]),
+    ];
+
+    //endregion
     #[must_use]
     pub fn new(first: CKCNumber, second: CKCNumber) -> Self {
         Self([first, second])
