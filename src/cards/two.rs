@@ -18,13 +18,11 @@ impl Two {
         Two([CardNumber::ACE_HEARTS, CardNumber::ACE_CLUBS]),
         Two([CardNumber::ACE_DIAMONDS, CardNumber::ACE_CLUBS]),
     ];
-    pub const AKs: [Two; 4] = [
+    pub const AK: [Two; 16] = [
         Two([CardNumber::ACE_SPADES, CardNumber::KING_SPADES]),
         Two([CardNumber::ACE_HEARTS, CardNumber::KING_HEARTS]),
         Two([CardNumber::ACE_DIAMONDS, CardNumber::KING_DIAMONDS]),
         Two([CardNumber::ACE_CLUBS, CardNumber::KING_CLUBS]),
-    ];
-    pub const AKo: [Two; 12] = [
         Two([CardNumber::ACE_SPADES, CardNumber::KING_HEARTS]),
         Two([CardNumber::ACE_SPADES, CardNumber::KING_DIAMONDS]),
         Two([CardNumber::ACE_SPADES, CardNumber::KING_CLUBS]),
@@ -38,6 +36,13 @@ impl Two {
         Two([CardNumber::ACE_CLUBS, CardNumber::KING_HEARTS]),
         Two([CardNumber::ACE_CLUBS, CardNumber::KING_DIAMONDS]),
     ];
+
+    // pub const aaa: [Two; 4] = &Two::AK[0..3].clone();
+
+    pub const AKs: [Two; 4] = [Two::AK[0], Two::AK[1], Two::AK[2], Two::AK[3]];
+    pub const AKo: [Two; 12] = [Two::AK[4], Two::AK[5], Two::AK[6], Two::AK[7], Two::AK[8], Two::AK[9], Two::AK[10], Two::AK[11], Two::AK[12], Two::AK[13], Two::AK[14], Two::AK[15]];
+
+
     pub const AQs: [Two; 4] = [
         Two([CardNumber::ACE_SPADES, CardNumber::QUEEN_SPADES]),
         Two([CardNumber::ACE_HEARTS, CardNumber::QUEEN_HEARTS]),
@@ -265,6 +270,13 @@ mod cards_two_tests {
     use super::*;
     use crate::CardNumber;
     use rstest::rstest;
+
+    #[test]
+    fn ak() {
+        let aks = &Two::AK[..4];
+
+        assert_eq!(aks, Two::AKs);
+    }
 
     #[test]
     fn are_unique() {
