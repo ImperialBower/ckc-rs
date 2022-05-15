@@ -38,6 +38,26 @@ impl Two {
         Two([CardNumber::ACE_CLUBS, CardNumber::KING_HEARTS]),
         Two([CardNumber::ACE_CLUBS, CardNumber::KING_DIAMONDS]),
     ];
+    pub const AQs: [Two; 4] = [
+        Two([CardNumber::ACE_SPADES, CardNumber::QUEEN_SPADES]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::QUEEN_HEARTS]),
+        Two([CardNumber::ACE_DIAMONDS, CardNumber::QUEEN_DIAMONDS]),
+        Two([CardNumber::ACE_CLUBS, CardNumber::QUEEN_CLUBS]),
+    ];
+    pub const AQo: [Two; 12] = [
+        Two([CardNumber::ACE_SPADES, CardNumber::QUEEN_HEARTS]),
+        Two([CardNumber::ACE_SPADES, CardNumber::QUEEN_DIAMONDS]),
+        Two([CardNumber::ACE_SPADES, CardNumber::QUEEN_CLUBS]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::QUEEN_SPADES]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::QUEEN_DIAMONDS]),
+        Two([CardNumber::ACE_HEARTS, CardNumber::QUEEN_CLUBS]),
+        Two([CardNumber::ACE_DIAMONDS, CardNumber::QUEEN_SPADES]),
+        Two([CardNumber::ACE_DIAMONDS, CardNumber::QUEEN_HEARTS]),
+        Two([CardNumber::ACE_DIAMONDS, CardNumber::QUEEN_CLUBS]),
+        Two([CardNumber::ACE_CLUBS, CardNumber::QUEEN_SPADES]),
+        Two([CardNumber::ACE_CLUBS, CardNumber::QUEEN_HEARTS]),
+        Two([CardNumber::ACE_CLUBS, CardNumber::QUEEN_DIAMONDS]),
+    ];
 
     //endregion
     #[must_use]
