@@ -12,7 +12,7 @@ impl Five {
     /// The number of leading and trailing zeroes from the `Five.or_rank_bits()` of a straight
     /// if it's not a wheel (5♥ 4♥ 3♥ 2♠ A♠).
     pub const STRAIGHT_PADDING: u32 = 27;
-    pub const WHEEL_OR_BITS: u32 = 4111;
+    pub const WHEEL_OR_BITS: u32 = 0b0001000000001111;
 
     #[must_use]
     pub fn new(first: CKCNumber, second: CKCNumber, third: CKCNumber, forth: CKCNumber, fifth: CKCNumber) -> Self {
