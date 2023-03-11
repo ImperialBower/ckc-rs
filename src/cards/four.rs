@@ -1,22 +1,15 @@
 use crate::cards::HandValidator;
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::{CKCNumber, HandError, PokerCard, Shifty};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Four([CKCNumber; 4]);
 
 impl Four {
     pub const OMAHA_PERMUTATIONS: [[u8; 2]; 6] = [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]];
 
     //region accessors
-
-    #[must_use]
-    pub fn first(&self) -> CKCNumber {
-        self.0[0]
-    }
 
     #[must_use]
     pub fn second(&self) -> CKCNumber {
@@ -84,6 +77,10 @@ impl HandValidator for Four {
             && (self.third() != self.forth())
     }
 
+    fn first(&self) -> CKCNumber {
+        self.0[0]
+    }
+
     fn sort(&self) -> Four {
         let mut array = *self;
         array.sort_in_place();
@@ -108,6 +105,17 @@ impl TryFrom<&'static str> for Four {
             None => Err(HandError::InvalidIndex),
             Some(four) => Ok(Four::from(four)),
         }
+    }
+}
+
+impl Shifty for Four {
+    fn shift_suit(&self) -> Self {
+        Four([
+            self.first().shift_suit(),
+            self.second().shift_suit(),
+            self.third().shift_suit(),
+            self.forth().shift_suit(),
+        ])
     }
 }
 
@@ -173,5 +181,13 @@ mod cards_four_tests {
         let four = Four::try_from("A♠ K♠ Q♠");
 
         assert!(four.is_err());
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Four::try_from("AH KH QH JH").unwrap().shift_suit(),
+            Four::try_from("AD KD QD JD").unwrap()
+        )
     }
 }

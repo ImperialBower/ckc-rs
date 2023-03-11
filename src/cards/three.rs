@@ -1,5 +1,5 @@
 use crate::cards::HandValidator;
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::{CKCNumber, HandError, PokerCard, Shifty};
 use core::slice::Iter;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
@@ -7,10 +7,6 @@ pub struct Three(pub [CKCNumber; 3]);
 
 impl Three {
     //region getters
-    #[must_use]
-    pub fn first(&self) -> CKCNumber {
-        self.0[0]
-    }
 
     #[must_use]
     pub fn second(&self) -> CKCNumber {
@@ -71,9 +67,11 @@ impl TryFrom<&'static str> for Three {
 
 impl HandValidator for Three {
     fn are_unique(&self) -> bool {
-        (self.first() != self.second())
-            && (self.first() != self.third())
-            && (self.second() != self.third())
+        (self.first() != self.second()) && (self.first() != self.third()) && (self.second() != self.third())
+    }
+
+    fn first(&self) -> CKCNumber {
+        self.0[0]
     }
 
     fn sort(&self) -> Three {
@@ -89,6 +87,16 @@ impl HandValidator for Three {
 
     fn iter(&self) -> Iter<'_, CKCNumber> {
         self.0.iter()
+    }
+}
+
+impl Shifty for Three {
+    fn shift_suit(&self) -> Self {
+        Three([
+            self.first().shift_suit(),
+            self.second().shift_suit(),
+            self.third().shift_suit(),
+        ])
     }
 }
 
@@ -151,5 +159,13 @@ mod cards_three_tests {
         let three = Three::try_from("A♠ K♠");
 
         assert!(three.is_err());
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Three::try_from("A♠ K♠ Q♠").unwrap().shift_suit(),
+            Three::try_from("AH KH QH").unwrap()
+        )
     }
 }

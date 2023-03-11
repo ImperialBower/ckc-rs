@@ -1,8 +1,9 @@
 # ckc-rs
 
-[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
+[![Build and Test](https://github.com/ImperialBower/ckc-rs/actions/workflows/CI.yaml/badge.svg)](https://github.com/ImperialBower/ckc-rs/actions/workflows/CI.yaml)
 [![Crates.io Version](https://img.shields.io/crates/v/ckc-rs.svg)](https://crates.io/crates/ckc-rs)
-
+[![Rustdocs](https://docs.rs/ckc-rs/badge.svg)](https://docs.rs/ckc-rs/)
 
 Implementation of a modified [Cactus Kev's Poker Hand Evaluator](https://suffe.cool/poker/evaluator.html)
 library in Rust. Code inspired and lookup tables borrowed from Vladislav Supalov's 
@@ -46,3 +47,12 @@ and [wasm](https://rustwasm.github.io/docs/book/) Rust.
 * [Awesome Embedded Rust](https://github.com/rust-embedded/awesome-embedded-rust)
 * [Rust 🦀 and WebAssembly 🕸](https://rustwasm.github.io/docs/book/)
 * [Writing an OS in Rust ](https://os.phil-opp.com/)
+  * Concurrency
+    * Ferrous Systems
+      * [no_std async/await - soon on stable](https://ferrous-systems.com/blog/stable-async-on-embedded/)
+      * [Concurrency Patterns in Embedded Rust](https://ferrous-systems.com/blog/embedded-concurrency-patterns/)
+* Heads Up
+  * [Cepheus Poker Project](http://poker.srv.ualberta.ca/)
+  * [HeadsUp Push/Fold Nash Equilibrium](https://www.holdemresources.net/hune)
+  * [Limit Hold’em Heads-Up Tournament Strategy](https://www.headsuphyper.com/limit-holdem-heads-up-strategy/)
+  * [Nash's ICM calculation](https://poker.stackexchange.com/questions/1022/nashs-icm-calculation)

@@ -1,13 +1,12 @@
 use crate::cards::five::Five;
 use crate::cards::two::Two;
-use crate::cards::HandValidator;
-use crate::{CKCNumber, HandError, PokerCard};
+use crate::cards::{HandRanker, HandValidator, Permutator};
+use crate::hand_rank::HandRankValue;
+use crate::{CKCNumber, HandError, PokerCard, Shifty};
 use core::slice::Iter;
 use serde::{Deserialize, Serialize};
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Seven([CKCNumber; 7]);
 
 impl Seven {
@@ -50,11 +49,6 @@ impl Seven {
     }
 
     //region accessors
-
-    #[must_use]
-    pub fn first(&self) -> CKCNumber {
-        self.0[0]
-    }
 
     #[must_use]
     pub fn second(&self) -> CKCNumber {
@@ -142,6 +136,31 @@ impl From<[CKCNumber; 7]> for Seven {
     }
 }
 
+impl HandRanker for Seven {
+    fn hand_rank_value_and_hand(&self) -> (HandRankValue, Five) {
+        let mut best_hrv: HandRankValue = 0u16;
+        let mut best_hand = Five::default();
+
+        for perm in Seven::FIVE_CARD_PERMUTATIONS {
+            let hand = self.five_from_permutation(perm);
+            let hrv = hand.hand_rank_value();
+            if (best_hrv == 0) || hrv != 0 && hrv < best_hrv {
+                best_hrv = hrv;
+                best_hand = hand;
+            }
+        }
+
+        (best_hrv, best_hand.sort())
+    }
+
+    fn hand_rank_value_validated(&self) -> HandRankValue {
+        if !self.is_valid() {
+            return crate::hand_rank::NO_HAND_RANK_VALUE;
+        }
+        self.hand_rank_value()
+    }
+}
+
 impl HandValidator for Seven {
     fn are_unique(&self) -> bool {
         let sorted = self.sort();
@@ -153,6 +172,10 @@ impl HandValidator for Seven {
             last = *c;
         }
         true
+    }
+
+    fn first(&self) -> CKCNumber {
+        self.0[0]
     }
 
     fn sort(&self) -> Seven {
@@ -168,6 +191,32 @@ impl HandValidator for Seven {
 
     fn iter(&self) -> Iter<'_, CKCNumber> {
         self.0.iter()
+    }
+}
+
+impl Permutator for Seven {
+    fn five_from_permutation(&self, permutation: [u8; 5]) -> Five {
+        Five::new(
+            self.0[permutation[0] as usize],
+            self.0[permutation[1] as usize],
+            self.0[permutation[2] as usize],
+            self.0[permutation[3] as usize],
+            self.0[permutation[4] as usize],
+        )
+    }
+}
+
+impl Shifty for Seven {
+    fn shift_suit(&self) -> Self {
+        Seven([
+            self.first().shift_suit(),
+            self.second().shift_suit(),
+            self.third().shift_suit(),
+            self.forth().shift_suit(),
+            self.fifth().shift_suit(),
+            self.sixth().shift_suit(),
+            self.seventh().shift_suit(),
+        ])
     }
 }
 
@@ -211,6 +260,74 @@ mod cards_seven_tests {
         assert!(seven.contain_blank());
         assert!(!seven.are_unique());
         assert!(!seven.is_valid());
+    }
+
+    #[test]
+    fn five_from_permutation() {
+        let seven = Seven::try_from("A♠ K♠ Q♠ J♠ T♠ 9♠ 8♠").unwrap();
+
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[0]),
+            Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[1]),
+            Five::try_from("A♠ K♠ Q♠ J♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[2]),
+            Five::try_from("A♠ K♠ Q♠ J♠ 8♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[3]),
+            Five::try_from("A♠ K♠ Q♠ T♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[4]),
+            Five::try_from("A♠ K♠ Q♠ T♠ 8♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[5]),
+            Five::try_from("A♠ K♠ Q♠ 9♠ 8♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[6]),
+            Five::try_from("A♠ K♠ J♠ T♠ 9♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[7]),
+            Five::try_from("A♠ K♠ J♠ T♠ 8♠").unwrap()
+        );
+        assert_eq!(
+            seven.five_from_permutation(Seven::FIVE_CARD_PERMUTATIONS[20]),
+            Five::try_from("Q♠ J♠ T♠ 9♠ 8♠").unwrap()
+        );
+    }
+
+    #[test]
+    fn hand_rank_value() {
+        assert_eq!(1, Seven::try_from("T♠ A♠ K♠ J♠ Q♠ 9♠ 8♠").unwrap().hand_rank_value());
+        assert_eq!(2, Seven::try_from("T♠ 8♠ K♠ J♠ Q♠ 9♠ 7♠").unwrap().hand_rank_value());
+        assert_eq!(3, Seven::try_from("T♠ 8♠ 7♠ J♠ 6♠ Q♠ 9♠").unwrap().hand_rank_value());
+        assert_eq!(7414, Seven::try_from("9S 8D 7C 5D 4♥ 3D 2D").unwrap().hand_rank_value());
+    }
+
+    #[test]
+    fn hand_rank_value_and_hand() {
+        let (value, hand) = Seven::try_from("T♠ A♠ K♠ J♠ Q♠ 9♠ 8♠")
+            .unwrap()
+            .hand_rank_value_and_hand();
+
+        assert_eq!(hand, Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap());
+        assert_eq!(value, 1);
+    }
+
+    #[test]
+    fn shifty__shift_suit() {
+        assert_eq!(
+            Seven::try_from("A♠ K♠ Q♠ J♠ T♠ 9♠ 8♠").unwrap().shift_suit(),
+            Seven::try_from("A♥ K♥ Q♥ J♥ T♥ 9♥ 8♥").unwrap()
+        )
     }
 
     #[test]
