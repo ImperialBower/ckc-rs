@@ -1,9 +1,13 @@
 # ckc-rs
 
-[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-![Build Status](https://github.com/ContractBridge/ckc-rs/actions/workflows/basic.yaml/badge.svg)
+![Build Status](https://github.com/ImperialBower/ckc-rs/actions/workflows/basic.yaml/badge.svg)
 [![Crates.io Version](https://img.shields.io/crates/v/ckc-rs.svg)](https://crates.io/crates/ckc-rs)
 
+
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue?style=flat-square)](LICENSE)
+[![Build and Test](https://github.com/ImperialBower/ckc-rs/actions/workflows/CI.yaml/badge.svg)](https://github.com/ImperialBower/ckc-rs/actions/workflows/CI.yaml)
+[![Crates.io Version](https://img.shields.io/crates/v/ckc-rs.svg)](https://crates.io/crates/ckc-rs)
+[![Rustdocs](https://docs.rs/ckc-rs/badge.svg)](https://docs.rs/ckc-rs/)
 
 Implementation of a modified [Cactus Kev's Poker Hand Evaluator](https://suffe.cool/poker/evaluator.html)
 library in Rust. Code inspired and lookup tables borrowed from Vladislav Supalov's 

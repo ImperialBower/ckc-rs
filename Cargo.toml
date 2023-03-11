@@ -1,12 +1,12 @@
 [package]
 name = "ckc-rs"
-version = "0.1.13"
+version = "0.1.14"
 description = "Poker hand evaluation library"
-authors = ["gaoler <gaoler@electronicpanopticon.com>"]
+authors = ["electronicpanopticon <gaoler@electronicpanopticon.com>"]
 edition = "2021"
-license = "MIT"
-repository = "https://github.com/ContractBridge/ckc-rs.git"
-homepage = "https://github.com/ContractBridge/ckc-rs"
+license = "Apache-2.0"
+repository = "https://github.com/ImperialBower/ckc-rs.git"
+homepage = "https://github.com/ImperialBower/ckc-rs"
 exclude = [".github/workflows/*", ".gitignore", "Cargo.lock"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
