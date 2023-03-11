@@ -1,12 +1,13 @@
 [package]
 name = "ckc-rs"
-version = "0.1.14"
 description = "Poker hand evaluation library"
+version = "0.1.14"
 authors = ["electronicpanopticon <gaoler@electronicpanopticon.com>"]
-edition = "2021"
-license = "Apache-2.0"
 repository = "https://github.com/ImperialBower/ckc-rs.git"
 homepage = "https://github.com/ImperialBower/ckc-rs"
+edition = "2021"
+rust-version = "1.63"
+license = "Apache-2.0"
 exclude = [".github/workflows/*", ".gitignore", "Cargo.lock"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -18,4 +19,4 @@ strum = { version = "0.24", features = ["derive"] }
 
 [dev-dependencies]
 cardpack = "0.4.13"
-rstest = "0.12.0"
+rstest = "0.16.0"
