@@ -255,7 +255,6 @@ impl Shifty for Five {
 mod cards__five_tests {
     use super::*;
     use crate::hand_rank::{HandRankClass, HandRankName};
-    use crate::CardNumber;
     use alloc::format;
     #[rustfmt::skip]
     #[rstest]
