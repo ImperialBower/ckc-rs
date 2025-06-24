@@ -148,11 +148,7 @@ impl Two {
     pub fn get_gap(&self) -> u8 {
         let s = self.sort();
         let distance_between = s.first().get_card_rank() as u8 - s.second().get_card_rank() as u8;
-        if distance_between < 1 {
-            0
-        } else {
-            distance_between - 1
-        }
+        distance_between.saturating_sub(1)
     }
 
     #[must_use]

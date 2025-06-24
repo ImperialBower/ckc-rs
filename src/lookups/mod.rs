@@ -30,13 +30,7 @@
 /// flushes and straight-flushes.  entries containing a zero
 /// mean that combination is not possible with a five-card
 /// flush hand.
-pub const FLUSHES: [u16; 7937] = include!("flushes.snip");
-
-/// this is a table lookup for all non-flush hands consisting
-/// of five unique ranks (i.e.  either Straights or High Card
-/// hands).  it's similar to the above "flushes" array.
-pub const UNIQUE_5: [u16; 7937] = include!("unique5.snip");
-
-/// those two arrays are needed for original evaluator version
-pub const PRODUCTS: [u32; 4888] = include!("products.snip");
-pub const VALUES: [u16; 4888] = include!("values.snip");
+pub mod flushes;
+pub mod products;
+pub mod unique5;
+pub mod values;
