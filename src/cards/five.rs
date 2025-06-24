@@ -90,7 +90,7 @@ impl Five {
         while low <= high {
             mid = (high + low) >> 1; // divide by two
 
-            let product = crate::lookups::PRODUCTS[mid] as usize;
+            let product = crate::lookups::products::PRODUCTS[mid] as usize;
             if key < product {
                 high = mid - 1;
             } else if key > product {
@@ -103,7 +103,7 @@ impl Five {
     }
 
     fn not_unique(&self) -> HandRankValue {
-        crate::lookups::VALUES[Five::find_in_products(self.multiply_primes())]
+        crate::lookups::values::VALUES[Five::find_in_products(self.multiply_primes())]
     }
 
     #[allow(clippy::cast_possible_truncation)]
@@ -111,7 +111,7 @@ impl Five {
         if index > Five::POSSIBLE_COMBINATIONS {
             return CardNumber::BLANK as HandRankValue;
         }
-        crate::lookups::UNIQUE_5[index]
+        crate::lookups::unique5::UNIQUE_5[index]
     }
 
     //endregion
@@ -179,7 +179,7 @@ impl HandRanker for Five {
         let i = self.or_rank_bits() as usize;
 
         let hrv: HandRankValue = if self.is_flush() {
-            crate::lookups::FLUSHES[i]
+            crate::lookups::flushes::FLUSHES[i]
         } else {
             // Continue to evaluate if it's not a flush and the cards aren't
             // unique (straight or high card).
