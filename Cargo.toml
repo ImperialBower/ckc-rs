@@ -1,7 +1,7 @@
 [package]
 name = "ckc-rs"
 description = "Poker hand evaluation library"
-version = "0.1.17"
+version = "0.1.18"
 authors = ["electronicpanopticon <gaoler@electronicpanopticon.com>"]
 repository = "https://github.com/ImperialBower/ckc-rs.git"
 homepage = "https://github.com/ImperialBower/ckc-rs"
