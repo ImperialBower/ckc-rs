@@ -10,6 +10,7 @@ use strum::EnumIter;
 
 pub mod cards;
 pub mod deck;
+pub mod games;
 pub mod hand_rank;
 mod lookups;
 pub mod parse;
