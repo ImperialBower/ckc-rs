@@ -125,7 +125,7 @@ impl Five {
 
     #[must_use]
     pub fn is_flush(&self) -> bool {
-        (self.and_bits() & CardNumber::SUIT_FILTER) != 0
+        (self.and_bits() & CardNumber::SUIT_MASK) != 0
     }
 
     /// WRITE: Unit testing uncovering how the padding method doesn't work for wheels.

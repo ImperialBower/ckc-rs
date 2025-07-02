@@ -38,13 +38,13 @@ pub struct CardNumber;
 
 #[rustfmt::skip]
 impl CardNumber {
-    pub const RANK_FLAG_FILTER: u32 = 0x1FFF0000; // 536805376 aka 0b00011111_11111111_00000000_00000000
+    pub const RANK_FLAG_MASK: u32 = 0x1FFF0000; // 536805376 aka 0b00011111_11111111_00000000_00000000
     pub const RANK_FLAG_SHIFT: u32 = 16;
-    pub const RANK_PRIME_FILTER: u32 = 0b00111111;
+    pub const RANK_PRIME_MASK: u32 = 0b00111111;
 
     /// Binary filter for `CardNumber` `Suit` flags.
     /// 00000000 00000000 11110000 00000000
-    pub const SUIT_FILTER: u32 = 0xF000; // 61440 aka 0b11110000_00000000
+    pub const SUIT_MASK: u32 = 0xF000; // 61440 aka 0b11110000_00000000
     pub const SUIT_SHORT_MASK: u32 = 0b1111;
     pub const SUIT_SHIFT: u32 = 12;
 
@@ -337,7 +337,7 @@ pub mod evaluate {
     #[must_use]
     #[deprecated(since = "0.1.9", note = "use Five.is_flush()")]
     pub fn is_flush(five_cards: [CKCNumber; 5]) -> bool {
-        (five_cards[0] & five_cards[1] & five_cards[2] & five_cards[3] & five_cards[4] & CardNumber::SUIT_FILTER) != 0
+        (five_cards[0] & five_cards[1] & five_cards[2] & five_cards[3] & five_cards[4] & CardNumber::SUIT_MASK) != 0
     }
 
     /// Returns a value that is made up of performing an or operation on all of the
@@ -664,11 +664,11 @@ pub trait PokerCard {
     }
 
     fn get_rank_flag(&self) -> u32 {
-        self.as_u32() & CardNumber::RANK_FLAG_FILTER
+        self.as_u32() & CardNumber::RANK_FLAG_MASK
     }
 
     fn get_rank_prime(&self) -> u32 {
-        self.as_u32() & CardNumber::RANK_PRIME_FILTER
+        self.as_u32() & CardNumber::RANK_PRIME_MASK
     }
 
     fn get_suit_bit(&self) -> u32 {
@@ -696,7 +696,7 @@ pub trait PokerCard {
     }
 
     fn get_suit_flag(&self) -> u32 {
-        self.as_u32() & CardNumber::SUIT_FILTER
+        self.as_u32() & CardNumber::SUIT_MASK
     }
 
     fn is_blank(&self) -> bool;

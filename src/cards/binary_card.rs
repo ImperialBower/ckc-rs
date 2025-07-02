@@ -312,7 +312,7 @@ impl BC64 for BinaryCard {
 
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod alt__bit_card {
+mod cards__binary_card {
     use super::*;
     use rstest::rstest;
 
