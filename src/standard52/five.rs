@@ -341,7 +341,7 @@ impl FromStr for Five {
     /// `Terminal::index_cleaner`), every token must parse as a `Card`, duplicates collapse,
     /// and exactly five distinct cards must remain — but nothing is allocated.
     ///
-    /// Task 9 lifted the body into the shared [`parse_hand`], which `Six` and `Seven` also
+    /// Task 9 lifted the body into the shared `parse_hand`, which `Six` and `Seven` also
     /// use; the rules are unchanged.
     ///
     /// # Errors

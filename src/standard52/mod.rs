@@ -26,6 +26,12 @@ pub use hand_rank_name::HandRankName;
 pub mod rank;
 pub use rank::Rank;
 
+pub mod seven;
+pub use seven::Seven;
+
+pub mod six;
+pub use six::Six;
+
 pub mod suit;
 pub use suit::{Suit, SuitShift};
 

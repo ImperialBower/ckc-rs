@@ -1,16 +1,17 @@
-use crate::analysis::hand_rank::{HandRankValue, NO_HAND_RANK_VALUE};
-use crate::arrays::HandRanker;
-use crate::arrays::five::Five;
-use crate::arrays::three::Three;
-use crate::arrays::two::Two;
-use crate::card::Card;
-use crate::cards::Cards;
-use crate::games::razz::california::{CaliforniaHandRank, CaliforniaHandRankValue, NO_RAZZ_HAND_RANK_VALUE};
-use crate::play::board::Board;
-use crate::{PKError, Pile, TheNuts};
-use std::fmt;
-use std::fmt::Formatter;
-use std::str::FromStr;
+use crate::CkcError;
+use crate::standard52::arrays::{HandRanker, HandValidator, impl_hand_ranker_sort_and_permutation, parse_hand};
+use crate::standard52::card::Card;
+use crate::standard52::five::Five;
+use crate::standard52::hand_rank::{HandRankValue, NO_HAND_RANK_VALUE};
+use core::fmt::{self, Display, Formatter};
+use core::slice::Iter;
+use core::str::FromStr;
+
+#[cfg(feature = "alloc")]
+use crate::standard52::arrays::collect_hand;
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Seven([Card; 7]);
@@ -41,98 +42,37 @@ impl Seven {
         [2, 3, 4, 5, 6],
     ];
 
-    /// # REFACTORING:
-    /// Moved this from `PlayerWins::seven_at_flop()`. It feels better to me to have the
-    /// functions that generate structs be in the impl for the struct they're generating. (What's
-    /// the rusty term for this?)
-    ///
-    /// The argument for this refactoring is that it's one thing to have a private utility function do
-    /// something to assist your business logic, but if you need it in multiple places, you want to
-    /// anchor it to it's subject. It's creating a `Seven`. It's being called in more than one place.
-    /// That's the best home for it. That way you don't need to trace it to figure out where it came
-    /// from. It generates a `Seven`. It's in `Seven`. Don't make me think.
-    ///
-    /// # Errors
-    ///
-    /// `PKError::InvalidCard` if the case slice contains an invalid card.
-    pub fn from_case_at_flop_old(player: Two, flop: Three, case: &[Card]) -> Result<Seven, PKError> {
-        Ok(Seven::from([
-            player.first(),
-            player.second(),
-            flop.first(),
-            flop.second(),
-            flop.third(),
-            *case.first().ok_or(PKError::InvalidCard)?,
-            *case.get(1).ok_or(PKError::InvalidCard)?,
-        ]))
-    }
-
-    /// # Errors
-    /// ¯\_(ツ)_/¯
-    pub fn from_case_at_deal(player: Two, case: Five) -> Result<Seven, PKError> {
-        Ok(Seven::from([
-            player.first(),
-            player.second(),
-            case.first(),
-            case.second(),
-            case.third(),
-            case.forth(),
-            case.fifth(),
-        ]))
-    }
-
-    /// # Errors
-    ///
-    /// Returns a `PKError` if any of the passed in values don't contain valid cards.
-    pub fn from_case_at_flop(player: Two, flop: Three, case: Two) -> Result<Seven, PKError> {
-        Ok(Seven::from([
-            player.first(),
-            player.second(),
-            flop.first(),
-            flop.second(),
-            flop.third(),
-            case.first(),
-            case.second(),
-        ]))
-    }
-
-    /// I don't need to return a `Result` here, since I'm not passing in a vector. While on the one
-    /// hand, I don't like that I have different types of signatures in the `from_case_at`
-    /// functions, when there's no point, there's no point.
-    #[must_use]
-    pub fn from_case_at_turn(player: Two, flop: Three, turn: Card, case: Card) -> Seven {
-        Seven::from([
-            player.first(),
-            player.second(),
-            flop.first(),
-            flop.second(),
-            flop.third(),
-            turn,
-            case,
-        ])
-    }
-
-    /// I'm torn if I should be passing these values by reference or by
-    /// value. All of the times implement the `Copy` trait, so either way
-    /// will work. For now I am going to add a todo as a cleanup task for
-    /// later on. I don't feel like there is a right answer, but it's annoying
-    /// that it's different in different places.
-    ///
-    /// TODO: Align around passing by reference or value for primitives.
-    #[must_use]
-    pub fn from_case_and_board(player: &Two, board: &Board) -> Seven {
-        Seven::from_case_at_turn(*player, board.flop, board.turn, board.river)
-    }
-
     #[must_use]
     pub fn to_arr(&self) -> [Card; 7] {
         self.0
     }
 }
 
-impl fmt::Display for Seven {
+impl Display for Seven {
+    /// Renders the hand exactly as pkcore does.
+    ///
+    /// pkcore formats a `Seven` as `self.cards()`, and `Pile::cards()` builds a
+    /// `Cards(IndexSet<Card>)` that **drops blanks and keeps only the first occurrence of
+    /// a repeated card** before joining the survivors with a single space. Both steps are
+    /// reproduced here, so `Seven::default()` renders as the empty string — pkcore's own
+    /// test asserted `Seven::default().cards().len() == 0`.
+    ///
+    /// Same two-layer rewrite as [`Five`]'s `Display`; see that impl for the full
+    /// derivation. Unlike pkcore's version, which collects a `Vec<String>` to join, this
+    /// allocates nothing and so stays available without the `alloc` feature.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.cards())
+        let mut wrote = false;
+        for (i, card) in self.0.iter().enumerate() {
+            if *card == Card::BLANK || self.0[..i].contains(card) {
+                continue;
+            }
+            if wrote {
+                write!(f, " ")?;
+            }
+            write!(f, "{card}")?;
+            wrote = true;
+        }
+        Ok(())
     }
 }
 
@@ -142,32 +82,21 @@ impl From<[Card; 7]> for Seven {
     }
 }
 
-impl FromStr for Seven {
-    type Err = PKError;
+impl HandValidator for Seven {
+    fn are_unique(&self) -> bool {
+        !(1..7).any(|i| self.0[i..].contains(&self.0[i - 1]))
+    }
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Seven::try_from(Cards::from_str(s)?)
+    fn first(&self) -> Card {
+        self.0[0]
+    }
+
+    fn iter(&self) -> Iter<'_, Card> {
+        self.0.iter()
     }
 }
 
 impl HandRanker for Seven {
-    fn razz_hand_rank_and_hand(&self) -> (CaliforniaHandRank, Five) {
-        let mut best_hrv: CaliforniaHandRankValue = NO_RAZZ_HAND_RANK_VALUE;
-        let mut best_hand = Five::default();
-
-        for perm in Seven::FIVE_CARD_PERMUTATIONS {
-            let hand = self.five_from_permutation(perm);
-            let hrv = CaliforniaHandRank::from(hand).get_hand_rank_value();
-
-            if (best_hrv == 0) || hrv != 0 && hrv < best_hrv {
-                best_hrv = hrv;
-                best_hand = hand;
-            }
-        }
-
-        (CaliforniaHandRank::from(best_hrv), best_hand.sort())
-    }
-
     fn hand_rank_value(&self) -> HandRankValue {
         let mut best_hrv = NO_HAND_RANK_VALUE;
 
@@ -200,60 +129,40 @@ impl HandRanker for Seven {
     impl_hand_ranker_sort_and_permutation!();
 }
 
-impl Pile for Seven {
-    fn add<P: Pile>(&self, _other: P) -> Self
-    where
-        Self: Sized,
-    {
-        unimplemented!("Seven cannot be added; they represent a fixed length collection.")
-    }
+impl FromStr for Seven {
+    type Err = CkcError;
 
-    fn card_at(self, _index: usize) -> Option<Card> {
-        unimplemented!("Seven is a fixed 7-card hand; use `.cards().card_at(index)` for positional access")
-    }
-
-    fn clean(&self) -> Self {
-        unimplemented!("Seven is a fixed 7-card hand; use `.cards().clean()` to strip card metadata")
-    }
-
-    fn swap(&mut self, _index: usize, _card: Card) -> Option<Card> {
-        unimplemented!("Seven is a fixed 7-card hand; use `.cards()` for a swappable set")
-    }
-
-    fn the_nuts(&self) -> TheNuts {
-        unimplemented!("Seven combines hole cards and board cards; the_nuts() is not defined for this type")
-    }
-
-    fn to_vec(&self) -> Vec<Card> {
-        self.0.to_vec()
+    /// Rewritten for the kernel: pkcore delegated to `Cards::from_str` and
+    /// `Seven::try_from(Cards)`, neither of which follows the kernel down. The observable
+    /// behaviour is preserved by the shared `parse_hand`, which `Five` and `Six` also
+    /// use — `,` and `-` are treated as separators, every token must parse as a `Card`,
+    /// duplicates collapse, and exactly seven distinct cards must remain.
+    ///
+    /// # Errors
+    ///
+    /// `CkcError::InvalidIndex` if a token is not a card, or if there are no tokens at all;
+    /// `CkcError::Incomplete` for fewer than seven distinct cards;
+    /// `CkcError::InvalidCardCount` for more than seven.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Seven(parse_hand::<7>(s)?))
     }
 }
 
-impl TryFrom<Cards> for Seven {
-    type Error = PKError;
-
-    fn try_from(cards: Cards) -> Result<Self, Self::Error> {
-        match cards.len() {
-            0..=6 => Err(PKError::NotEnoughCards),
-            7 => Ok(Seven::from([
-                *cards.get_index(0).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(1).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(2).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(3).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(4).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(5).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(6).ok_or(PKError::InvalidCard)?,
-            ])),
-            _ => Err(PKError::TooManyCards),
-        }
-    }
-}
-
+#[cfg(feature = "alloc")]
 impl TryFrom<Vec<Card>> for Seven {
-    type Error = PKError;
+    type Error = CkcError;
 
+    /// pkcore was `Seven::try_from(Cards::from(vec))`; `Cards::from(Vec<Card>)`
+    /// (`pkcore/src/cards.rs:856-863`) drops blanks and collapses duplicates on the way
+    /// into its `IndexSet`, and the `TryFrom<Cards>` impl then demanded exactly seven.
+    /// `collect_hand` reproduces both layers without allocating.
+    ///
+    /// # Errors
+    ///
+    /// `CkcError::Incomplete` for fewer than seven distinct non-blank cards;
+    /// `CkcError::InvalidCardCount` for more.
     fn try_from(vec: Vec<Card>) -> Result<Self, Self::Error> {
-        Seven::try_from(Cards::from(vec))
+        Ok(Seven(collect_hand::<7, _>(vec.into_iter())?))
     }
 }
 
@@ -261,9 +170,11 @@ impl TryFrom<Vec<Card>> for Seven {
 #[allow(non_snake_case)]
 mod arrays__seven_tests {
     use super::*;
-    use crate::analysis::class::HandRankClass;
-    use crate::analysis::name::HandRankName;
-    use crate::util::data::TestData;
+    use crate::standard52::hand_rank_class::HandRankClass;
+    use crate::standard52::hand_rank_name::HandRankName;
+
+    #[cfg(feature = "alloc")]
+    use alloc::string::ToString;
 
     const CARDS: [Card; 7] = [
         Card::ACE_DIAMONDS,
@@ -275,26 +186,73 @@ mod arrays__seven_tests {
         Card::DEUCE_SPADES,
     ];
 
-    #[test]
-    fn from_case_and_board() {
-        let seven = Seven::from_case_and_board(&Two::HAND_6S_6H, &TestData::the_hand().board);
-
-        assert_eq!("6♠ 6♥ 9♣ 6♦ 5♥ 5♠ 8♠", seven.to_string());
-    }
-
+    #[cfg(feature = "alloc")]
     #[test]
     fn display() {
         assert_eq!("A♦ 6♠ 4♠ A♠ 5♦ 3♣ 2♠", Seven(CARDS).to_string());
     }
 
+    /// Replaces pkcore's `cards()` test, which asserted
+    /// `Seven::default().cards().len() == 0`. `Cards` does not follow the kernel down, but
+    /// the blank-dropping it performed is now inside `Display`, so the same property is
+    /// asserted through the only surface that still exposes it.
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn display__drops_blanks_and_collapses_duplicates() {
+        assert_eq!("", Seven::default().to_string());
+        assert_eq!(
+            "A♠ K♠ Q♠",
+            Seven::from([
+                Card::ACE_SPADES,
+                Card::KING_SPADES,
+                Card::ACE_SPADES,
+                Card::QUEEN_SPADES,
+                Card::BLANK,
+                Card::KING_SPADES,
+                Card::BLANK,
+            ])
+            .to_string()
+        );
+        assert_eq!(
+            "A♠",
+            Seven::from([
+                Card::BLANK,
+                Card::ACE_SPADES,
+                Card::BLANK,
+                Card::BLANK,
+                Card::BLANK,
+                Card::BLANK,
+                Card::BLANK,
+            ])
+            .to_string()
+        );
+    }
+
     #[test]
     fn from_str() {
         assert_eq!(Seven::from_str("A♦ 6♠ 4♠ A♠ 5♦ 3♣ 2♠").unwrap(), Seven::from(CARDS));
-        assert_eq!(Seven::from_str("AD 2D 3D 4D 5d").unwrap_err(), PKError::NotEnoughCards);
+        assert_eq!(Seven::from_str("AD 2D 3D 4D 5d").unwrap_err(), CkcError::Incomplete);
         assert_eq!(
             Seven::from_str("AD 2D 3D 4D 5d 6d 7d 8d").unwrap_err(),
-            PKError::TooManyCards
+            CkcError::InvalidCardCount
         );
+    }
+
+    /// The `Cards`-shaped behaviour pkcore's `TryFrom<Cards>` tests covered, asserted
+    /// through `FromStr` — the only route into a `Seven` that still performs it.
+    #[test]
+    fn from_str__separators_duplicates_and_garbage() {
+        assert_eq!(Seven::from_str("A♦,6♠-4♠ A♠ 5♦ 3♣ 2♠").unwrap(), Seven::from(CARDS));
+        assert_eq!(
+            Seven::from_str("A♦ 6♠ 6♠ 4♠ A♠ 5♦ 3♣ 2♠").unwrap(),
+            Seven::from(CARDS),
+            "duplicates collapse to their first occurrence"
+        );
+        assert_eq!(
+            Seven::from_str("A♦ 6♠ 4♠ A♠ 5♦ 3♣ XX").unwrap_err(),
+            CkcError::InvalidIndex
+        );
+        assert_eq!(Seven::from_str("").unwrap_err(), CkcError::InvalidIndex);
     }
 
     #[test]
@@ -314,43 +272,45 @@ mod arrays__seven_tests {
         assert_eq!(Five::from_str("6S 5D 4S 3C 2S").unwrap(), best);
     }
 
+    /// Added by the kernel: pkcore had no `HandValidator`, so these impls are new code and
+    /// need their own coverage.
     #[test]
-    fn hand_ranker__razz_hand_rank_and_hand() {
-        let seven = Seven::from_str("A♠ 2♠ 3♠ 4♠ 5♠ A♦ 2♦").unwrap();
-        let (rank, hand) = seven.razz_hand_rank_and_hand();
+    fn hand_validator() {
+        let seven = Seven::from(CARDS);
+        assert!(seven.are_unique());
+        assert!(!seven.contains_blank());
+        assert!(!seven.is_corrupt());
+        assert!(seven.is_valid());
+        assert_eq!(Card::ACE_DIAMONDS, HandValidator::first(&seven));
+        assert_eq!(7, seven.iter().count());
 
-        assert_eq!("5♠ 4♠ 3♠ 2♠ A♠", hand.to_string());
-        assert_eq!(1, rank as u16);
-        assert_eq!(Five::from_str("5♠ 4♠ 3♠ 2♠ A♠").unwrap(), hand);
+        let mut dupe = CARDS;
+        dupe[6] = Card::ACE_DIAMONDS;
+        let dupe = Seven::from(dupe);
+        assert!(!dupe.are_unique());
+        assert!(!dupe.is_valid());
+
+        assert!(Seven::default().contains_blank());
+        assert!(Seven::default().is_corrupt());
+        assert!(!Seven::default().is_valid());
     }
 
+    /// Added by the kernel: `TryFrom<Vec<Card>>` is a rewrite (pkcore routed it through
+    /// `Cards`), and pkcore had no test for it.
+    #[cfg(feature = "alloc")]
     #[test]
-    fn cards() {
-        assert_eq!(0, Seven::default().cards().len());
-        assert_eq!("A♦ 6♠ 4♠ A♠ 5♦ 3♣ 2♠", Seven::from(CARDS).cards().to_string());
-    }
+    fn try_from__vec() {
+        use alloc::vec;
 
-    #[test]
-    fn try_from__cards() {
+        assert_eq!(Seven::try_from(CARDS.to_vec()).unwrap(), Seven::from(CARDS));
         assert_eq!(
-            Seven::try_from(Cards::from_str("A♦ 6♠ 4♠ A♠ 5♦ 3♣ 2♠").unwrap()).unwrap(),
-            Seven(CARDS)
+            Seven::try_from(vec![Card::ACE_DIAMONDS; 7]).unwrap_err(),
+            CkcError::Incomplete,
+            "duplicates collapse, leaving one card"
         );
-    }
-
-    #[test]
-    fn try_from__cards__not_enough() {
-        let sut = Seven::try_from(Cards::from_str("A♦ K♦ Q♦ J♦").unwrap());
-
-        assert!(sut.is_err());
-        assert_eq!(sut.unwrap_err(), PKError::NotEnoughCards);
-    }
-
-    #[test]
-    fn try_from__cards__too_many() {
-        let sut = Seven::try_from(Cards::from_str("A♦ K♦ Q♦ J♦ T♦ 9♦ 8♦ 7♦").unwrap());
-
-        assert!(sut.is_err());
-        assert_eq!(sut.unwrap_err(), PKError::TooManyCards);
+        assert_eq!(Seven::try_from(vec![Card::BLANK; 7]).unwrap_err(), CkcError::Incomplete);
+        let mut too_many = CARDS.to_vec();
+        too_many.push(Card::KING_SPADES);
+        assert_eq!(Seven::try_from(too_many).unwrap_err(), CkcError::InvalidCardCount);
     }
 }

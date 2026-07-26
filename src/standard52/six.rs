@@ -1,15 +1,11 @@
-use crate::analysis::hand_rank::{HandRankValue, NO_HAND_RANK_VALUE};
-use crate::arrays::HandRanker;
-use crate::arrays::five::Five;
-use crate::arrays::three::Three;
-use crate::arrays::two::Two;
-use crate::card::Card;
-use crate::cards::Cards;
-use crate::games::razz::california::{CaliforniaHandRank, CaliforniaHandRankValue, NO_RAZZ_HAND_RANK_VALUE};
-use crate::{PKError, Pile, TheNuts};
-use std::fmt;
-use std::fmt::Formatter;
-use std::str::FromStr;
+use crate::CkcError;
+use crate::standard52::arrays::{HandRanker, HandValidator, impl_hand_ranker_sort_and_permutation, parse_hand};
+use crate::standard52::card::Card;
+use crate::standard52::five::Five;
+use crate::standard52::hand_rank::{HandRankValue, NO_HAND_RANK_VALUE};
+use core::fmt::{self, Display, Formatter};
+use core::slice::Iter;
+use core::str::FromStr;
 
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Six([Card; 6]);
@@ -24,18 +20,6 @@ impl Six {
         [0, 2, 3, 4, 5],
         [1, 2, 3, 4, 5],
     ];
-
-    #[must_use]
-    pub fn from_2and3and1(hole_cards: Two, flop: Three, turn: Card) -> Six {
-        Six([
-            hole_cards.first(),
-            hole_cards.second(),
-            flop.first(),
-            flop.second(),
-            flop.third(),
-            turn,
-        ])
-    }
 
     //region accessors
     #[must_use]
@@ -75,9 +59,31 @@ impl Six {
     //endregion
 }
 
-impl fmt::Display for Six {
+impl Display for Six {
+    /// Renders the hand exactly as pkcore does.
+    ///
+    /// pkcore formats a `Six` as `self.cards()`, and `Pile::cards()` builds a
+    /// `Cards(IndexSet<Card>)` that **drops blanks and keeps only the first occurrence of
+    /// a repeated card** before joining the survivors with a single space. Both steps are
+    /// reproduced here, so `Six::default()` renders as the empty string rather than
+    /// `"__ __ __ __ __ __"` — pkcore's own test asserted `Six::default().cards().len() == 0`.
+    ///
+    /// Same two-layer rewrite as [`Five`]'s `Display`; see that impl for the full
+    /// derivation. Unlike pkcore's version, which collects a `Vec<String>` to join, this
+    /// allocates nothing and so stays available without the `alloc` feature.
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.cards())
+        let mut wrote = false;
+        for (i, card) in self.0.iter().enumerate() {
+            if *card == Card::BLANK || self.0[..i].contains(card) {
+                continue;
+            }
+            if wrote {
+                write!(f, " ")?;
+            }
+            write!(f, "{card}")?;
+            wrote = true;
+        }
+        Ok(())
     }
 }
 
@@ -87,32 +93,21 @@ impl From<[Card; 6]> for Six {
     }
 }
 
-impl FromStr for Six {
-    type Err = PKError;
+impl HandValidator for Six {
+    fn are_unique(&self) -> bool {
+        !(1..6).any(|i| self.0[i..].contains(&self.0[i - 1]))
+    }
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Six::try_from(Cards::from_str(s)?)
+    fn first(&self) -> Card {
+        self.0[0]
+    }
+
+    fn iter(&self) -> Iter<'_, Card> {
+        self.0.iter()
     }
 }
 
 impl HandRanker for Six {
-    fn razz_hand_rank_and_hand(&self) -> (CaliforniaHandRank, Five) {
-        let mut best_hrv: CaliforniaHandRankValue = NO_RAZZ_HAND_RANK_VALUE;
-        let mut best_hand = Five::default();
-
-        for perm in Six::FIVE_CARD_PERMUTATIONS {
-            let hand = self.five_from_permutation(perm);
-            let hrv = CaliforniaHandRank::from(hand).get_hand_rank_value();
-
-            if (best_hrv == 0) || hrv != 0 && hrv < best_hrv {
-                best_hrv = hrv;
-                best_hand = hand;
-            }
-        }
-
-        (CaliforniaHandRank::from(best_hrv), best_hand.sort())
-    }
-
     fn hand_rank_value(&self) -> HandRankValue {
         let mut best_hrv = NO_HAND_RANK_VALUE;
 
@@ -145,51 +140,22 @@ impl HandRanker for Six {
     impl_hand_ranker_sort_and_permutation!();
 }
 
-impl Pile for Six {
-    fn add<P: Pile>(&self, _other: P) -> Self
-    where
-        Self: Sized,
-    {
-        unimplemented!("Six cannot be added; they represent a fixed length collection.")
-    }
+impl FromStr for Six {
+    type Err = CkcError;
 
-    fn card_at(self, _index: usize) -> Option<Card> {
-        unimplemented!("Six is a fixed-length collection; use `.cards().card_at(index)` for positional access")
-    }
-
-    fn clean(&self) -> Self {
-        unimplemented!("Six is a fixed-length collection; use `.cards().clean()` to strip card metadata")
-    }
-
-    fn swap(&mut self, _index: usize, _card: Card) -> Option<Card> {
-        unimplemented!("Six is a fixed-length collection; use `.cards()` for a swappable set")
-    }
-
-    fn the_nuts(&self) -> TheNuts {
-        unimplemented!("Six combines hole cards and board cards; the_nuts() is not defined for this type")
-    }
-
-    fn to_vec(&self) -> Vec<Card> {
-        self.0.to_vec()
-    }
-}
-
-impl TryFrom<Cards> for Six {
-    type Error = PKError;
-
-    fn try_from(cards: Cards) -> Result<Self, Self::Error> {
-        match cards.len() {
-            0..=5 => Err(PKError::NotEnoughCards),
-            6 => Ok(Six::from([
-                *cards.get_index(0).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(1).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(2).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(3).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(4).ok_or(PKError::InvalidCard)?,
-                *cards.get_index(5).ok_or(PKError::InvalidCard)?,
-            ])),
-            _ => Err(PKError::TooManyCards),
-        }
+    /// Rewritten for the kernel: pkcore delegated to `Cards::from_str` and
+    /// `Six::try_from(Cards)`, neither of which follows the kernel down. The observable
+    /// behaviour is preserved by the shared `parse_hand`, which `Five` and `Seven` also
+    /// use — `,` and `-` are treated as separators, every token must parse as a `Card`,
+    /// duplicates collapse, and exactly six distinct cards must remain.
+    ///
+    /// # Errors
+    ///
+    /// `CkcError::InvalidIndex` if a token is not a card, or if there are no tokens at all;
+    /// `CkcError::Incomplete` for fewer than six distinct cards; `CkcError::InvalidCardCount`
+    /// for more than six.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Six(parse_hand::<6>(s)?))
     }
 }
 
@@ -197,8 +163,11 @@ impl TryFrom<Cards> for Six {
 #[allow(non_snake_case)]
 mod arrays__six_tests {
     use super::*;
-    use crate::analysis::class::HandRankClass;
-    use crate::analysis::name::HandRankName;
+    use crate::standard52::hand_rank_class::HandRankClass;
+    use crate::standard52::hand_rank_name::HandRankName;
+
+    #[cfg(feature = "alloc")]
+    use alloc::string::ToString;
 
     const CARDS: [Card; 6] = [
         Card::ACE_DIAMONDS,
@@ -209,19 +178,44 @@ mod arrays__six_tests {
         Card::SIX_DIAMONDS,
     ];
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn display() {
         assert_eq!("A♦ 2♦ 3♦ 4♦ 5♦ 6♦", Six(CARDS).to_string());
     }
 
+    /// Replaces pkcore's `cards()` test, which asserted
+    /// `Six::default().cards().len() == 0`. `Cards` does not follow the kernel down, but
+    /// the blank-dropping it performed is now inside `Display`, so the same property is
+    /// asserted through the only surface that still exposes it.
+    #[cfg(feature = "alloc")]
     #[test]
-    fn hand_ranker__razz_hand_rank_and_hand() {
-        let six = Six::from_str("A♠ 2♠ 3♠ 4♠ 5♠ A♦").unwrap();
-        let (rank, hand) = six.razz_hand_rank_and_hand();
-
-        assert_eq!("5♠ 4♠ 3♠ 2♠ A♠", hand.to_string());
-        assert_eq!(1, rank as u16);
-        assert_eq!(Five::from_str("5♠ 4♠ 3♠ 2♠ A♠").unwrap(), hand);
+    fn display__drops_blanks_and_collapses_duplicates() {
+        assert_eq!("", Six::default().to_string());
+        assert_eq!(
+            "A♠ K♠ Q♠",
+            Six::from([
+                Card::ACE_SPADES,
+                Card::KING_SPADES,
+                Card::ACE_SPADES,
+                Card::QUEEN_SPADES,
+                Card::BLANK,
+                Card::KING_SPADES,
+            ])
+            .to_string()
+        );
+        assert_eq!(
+            "A♠",
+            Six::from([
+                Card::BLANK,
+                Card::ACE_SPADES,
+                Card::BLANK,
+                Card::BLANK,
+                Card::BLANK,
+                Card::BLANK,
+            ])
+            .to_string()
+        );
     }
 
     #[test]
@@ -232,11 +226,25 @@ mod arrays__six_tests {
     #[test]
     fn from_str() {
         assert_eq!(Six::from_str("AD 2D 3D 4D 5d 6d").unwrap(), Six::from(CARDS));
-        assert_eq!(Six::from_str("AD 2D 3D 4D 5d").unwrap_err(), PKError::NotEnoughCards);
+        assert_eq!(Six::from_str("AD 2D 3D 4D 5d").unwrap_err(), CkcError::Incomplete);
         assert_eq!(
             Six::from_str("AD 2D 3D 4D 5d 6d 7d").unwrap_err(),
-            PKError::TooManyCards
+            CkcError::InvalidCardCount
         );
+    }
+
+    /// The `Cards`-shaped behaviour pkcore's `TryFrom<Cards>` tests covered, asserted
+    /// through `FromStr` — the only route into a `Six` that still performs it.
+    #[test]
+    fn from_str__separators_duplicates_and_garbage() {
+        assert_eq!(Six::from_str("AD,2D-3D 4D 5d 6d").unwrap(), Six::from(CARDS));
+        assert_eq!(
+            Six::from_str("AD 2D 2D 3D 4D 5d 6d").unwrap(),
+            Six::from(CARDS),
+            "duplicates collapse to their first occurrence"
+        );
+        assert_eq!(Six::from_str("AD 2D 3D 4D 5d XX").unwrap_err(), CkcError::InvalidIndex);
+        assert_eq!(Six::from_str("").unwrap_err(), CkcError::InvalidIndex);
     }
 
     #[test]
@@ -261,33 +269,31 @@ mod arrays__six_tests {
         assert_eq!(Six::from_str("Ad 6d 5D 4D 3D 2d").unwrap(), Six::from(CARDS).sort());
     }
 
+    /// Added by the kernel: pkcore had no `HandValidator`, so these impls are new code and
+    /// need their own coverage.
     #[test]
-    fn cards() {
-        assert_eq!(0, Six::default().cards().len());
-        assert_eq!("A♦ 2♦ 3♦ 4♦ 5♦ 6♦", Six::from(CARDS).cards().to_string());
-    }
+    fn hand_validator() {
+        let six = Six::from(CARDS);
+        assert!(six.are_unique());
+        assert!(!six.contains_blank());
+        assert!(!six.is_corrupt());
+        assert!(six.is_valid());
+        assert_eq!(Card::ACE_DIAMONDS, HandValidator::first(&six));
+        assert_eq!(6, six.iter().count());
 
-    #[test]
-    fn try_from__cards() {
-        assert_eq!(
-            Six::try_from(Cards::from_str("A♦ 2♦ 3♦ 4♦ 5♦ 6♦").unwrap()).unwrap(),
-            Six(CARDS)
-        );
-    }
+        let dupe = Six::from([
+            Card::ACE_DIAMONDS,
+            Card::ACE_DIAMONDS,
+            Card::TREY_DIAMONDS,
+            Card::FOUR_DIAMONDS,
+            Card::FIVE_DIAMONDS,
+            Card::SIX_DIAMONDS,
+        ]);
+        assert!(!dupe.are_unique());
+        assert!(!dupe.is_valid());
 
-    #[test]
-    fn try_from__cards__not_enough() {
-        let sut = Six::try_from(Cards::from_str("A♦ K♦ Q♦ J♦").unwrap());
-
-        assert!(sut.is_err());
-        assert_eq!(sut.unwrap_err(), PKError::NotEnoughCards);
-    }
-
-    #[test]
-    fn try_from__cards__too_many() {
-        let sut = Six::try_from(Cards::from_str("A♦ K♦ Q♦ J♦ T♦ 9♦ 8♦").unwrap());
-
-        assert!(sut.is_err());
-        assert_eq!(sut.unwrap_err(), PKError::TooManyCards);
+        assert!(Six::default().contains_blank());
+        assert!(Six::default().is_corrupt());
+        assert!(!Six::default().is_valid());
     }
 }
