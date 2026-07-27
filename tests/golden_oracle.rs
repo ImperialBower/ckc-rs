@@ -18,7 +18,37 @@ fn deck() -> [Card; 52] {
 
 #[test]
 fn every_five_card_hand_matches_the_frozen_oracle() {
-    let golden = std::fs::read("tests/golden/five_card_ranks.bin").expect("run tools/oracle-gen first");
+    // The fixture is ~5.2 MB and is `exclude`d from the published package, along with
+    // `tools/oracle-gen` which regenerates it. This test file is NOT excluded, so it also
+    // runs against an extracted `.crate` tarball (distro source builds, reproducible-build
+    // harnesses, `cargo package && cargo test`). Skip there rather than hard-failing on a
+    // file that was deliberately not shipped — a git checkout, where the fixture exists,
+    // is the only place this test is meaningful.
+    // Skipping must not become its own hollow gate: if the fixture is missing from a git
+    // checkout — deleted, or never generated — this test has to FAIL, or deleting it turns
+    // CI green. `tools/oracle-gen` is excluded from the package too, so its presence is a
+    // reliable discriminator: tools present => git checkout => the fixture is required.
+    let path = "tests/golden/five_card_ranks.bin";
+    let in_git_checkout = std::path::Path::new("tools/oracle-gen/Cargo.toml").exists();
+
+    let golden = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            assert!(
+                !in_git_checkout,
+                "{path} is missing from a git checkout ({e}). This is the fixed point of \
+                 the whole migration — regenerate it with `cargo run --manifest-path \
+                 tools/oracle-gen/Cargo.toml` rather than skipping."
+            );
+            eprintln!(
+                "SKIPPED: {path} is absent and `tools/` is absent too, so this is an \
+                 extracted package rather than a checkout. Both are excluded from the \
+                 published crate by design."
+            );
+            return;
+        },
+    };
+
     assert_eq!(golden.len(), EXPECTED_HANDS * 2, "golden file is the wrong size");
 
     let deck = deck();

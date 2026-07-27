@@ -7,7 +7,12 @@ repository = "https://github.com/ImperialBower/ckc-rs.git"
 homepage = "https://github.com/ImperialBower/ckc-rs"
 edition = "2024"
 rust-version = "1.85"
-license = "Apache-2.0"
+# `AND`, not `OR`: this is not a dual-license choice. The crate itself is
+# Apache-2.0 (./LICENSE), and it vendors Vladislav Supalov's MIT-licensed Cactus
+# Kev lookup tables (./src/standard52/lookups/, attribution in that directory's
+# LICENSE). `src/` is not excluded, so both ship in the published package and
+# both bind the consumer.
+license = "Apache-2.0 AND MIT"
 exclude = [".github/workflows/*", ".gitignore", "Cargo.lock", "tools/*", "tests/golden/*"]
 
 [features]

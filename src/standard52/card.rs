@@ -26,7 +26,22 @@ use alloc::{format, string::String};
 /// ```
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
-pub struct Card(#[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_card_index"))] u32);
+pub struct Card(
+    /// `pub(crate)`, deliberately **not** `pub`.
+    ///
+    /// Every public constructor sanitizes — `From<u32>` filters unrecognized values to
+    /// `BLANK`, `new` delegates to it, `FromStr` validates first — so a caller cannot
+    /// build a `Card` whose bits are not a real `CardNumber`. That is the intended
+    /// public contract and it does not change here.
+    ///
+    /// Crate-internal code needs the raw constructor for two reasons: the evaluator
+    /// sets frequency flags that are deliberately not valid `CardNumber`s, and
+    /// [`HandValidator::is_corrupt`](crate::standard52::HandValidator::is_corrupt) is
+    /// otherwise untestable — an untested guard rots, and this one becomes load-bearing
+    /// as soon as an unchecked fast path or a second deck family exists.
+    #[cfg_attr(feature = "serde", serde(deserialize_with = "deserialize_card_index"))]
+    pub(crate) u32,
+);
 
 impl Card {
     //region binary filters
@@ -361,18 +376,30 @@ mod card_tests {
     /// pair must reproduce the exact matching `CardNumber` constant. If any
     /// of the 52 disagree, a `Rank`/`Suit` method or a `Card` const was
     /// transcribed wrong when porting from pkcore.
+    ///
+    /// The expected value is **positional**, not a membership test.
+    /// `CardNumber::ALL` is laid out suit-major (spades, hearts, diamonds, clubs)
+    /// and rank-descending (ace…deuce) — the same orders as `Suit::ALL` and
+    /// `Rank::ALL` — so `CardNumber::ALL[suit * 13 + rank]` names the one constant
+    /// this pair must equal. Task 11 Step 2d replaced the earlier
+    /// `CardNumber::ALL.iter().any(…)` membership check plus a
+    /// `Card::from(CardNumber::try_from(composed))` round-trip: the round-trip was a
+    /// tautology (it recomputed the actual value and compared it to itself), and
+    /// membership alone would have passed on any permutation of the 52 — a swapped
+    /// pair of constants was invisible.
     #[test]
     fn new_composes_the_cactus_kev_number() {
-        for rank in Rank::ALL {
-            for suit in Suit::ALL {
-                let composed = Card::new(rank, suit);
-                assert!(
-                    CardNumber::ALL.iter().any(|cn| *cn as u32 == composed.as_u32()),
-                    "{rank:?} of {suit:?} composed to {:#010x}, which is not a CardNumber",
-                    composed.as_u32()
+        for (r, rank) in Rank::ALL.iter().enumerate() {
+            for (s, suit) in Suit::ALL.iter().enumerate() {
+                let composed = Card::new(*rank, *suit);
+                let expected = CardNumber::ALL[s * Rank::ALL.len() + r];
+                assert_eq!(
+                    composed.as_u32(),
+                    expected as u32,
+                    "{rank:?} of {suit:?} composed to {:#010x}, expected {expected:?} ({:#010x})",
+                    composed.as_u32(),
+                    expected as u32
                 );
-                let expected = Card::from(CardNumber::try_from(composed.as_u32()).unwrap() as u32);
-                assert_eq!(composed, expected, "{rank:?} of {suit:?}");
             }
         }
         assert_eq!(Card::new(Rank::ACE, Suit::SPADES), Card::ACE_SPADES);

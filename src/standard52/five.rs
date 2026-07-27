@@ -110,21 +110,50 @@ impl Five {
             & self.fifth().as_u32()
     }
 
+    /// Binary-searches `PRODUCTS` for this hand's rank-prime product, returning the
+    /// index of the match or `0` when the key is absent.
+    ///
+    /// Rewritten from pkcore's closed-interval form (`pkcore/src/arrays/five.rs:117-137`),
+    /// which did `high = mid - 1` and so underflowed `usize` whenever the key was below
+    /// every entry in the table — a subtract-with-overflow panic in debug and a wrap to
+    /// `usize::MAX` followed by an out-of-bounds index in release. That is reachable from
+    /// the public, unguarded surface: `multiply_primes()` returns `0` for an all-blank
+    /// hand, and `PRODUCTS[0]` is 48.
+    ///
+    /// This is the standard half-open search over the same table, so it returns the same
+    /// index for every key that is present and can change no evaluated rank. The golden
+    /// oracle is the proof.
+    ///
+    /// # The returned `0` is ambiguous — validate before calling
+    ///
+    /// `0` is both the not-found sentinel **and** a legitimate index: `PRODUCTS[0]` is
+    /// `48` = `2·2·2·2·3`, the rank-prime product of four deuces with a trey, whose rank
+    /// is `VALUES[0]` = `166`. A caller cannot tell "matched quad deuces" from "not in the
+    /// table", and [`Self::not_unique`] will report `166` for either.
+    ///
+    /// pkcore had this ambiguity already, for keys *above* the table. Removing the
+    /// underflow extends it to keys *below* the table, which previously panicked — a
+    /// crash traded for a defined but semantically wrong value. That is the better trade,
+    /// but it is a trade.
+    ///
+    /// This costs nothing on the evaluator path: [`HandRanker::hand_rank_value`] guards
+    /// with [`HandValidator::is_valid`] first, and for five distinct well-formed cards the
+    /// Cactus Kev table is exhaustive, so a genuine miss cannot occur. Callers reaching
+    /// this directly must validate first.
     #[must_use]
     #[allow(clippy::comparison_chain)]
     pub fn find_in_products(&self) -> usize {
         let key = self.multiply_primes();
 
-        let mut low = 0;
-        let mut high = 4887;
-        let mut mid;
+        let mut low = 0usize;
+        let mut high = 4888usize; // exclusive upper bound
 
-        while low <= high {
-            mid = usize::midpoint(high, low); // divide by two
+        while low < high {
+            let mid = usize::midpoint(low, high);
 
             let product = lookups::product_at(mid) as usize;
             if key < product {
-                high = mid - 1;
+                high = mid;
             } else if key > product {
                 low = mid + 1;
             } else {
@@ -162,10 +191,19 @@ impl Five {
         self.or_bits() >> Card::RANK_FLAG_SHIFT
     }
 
+    /// Looks up the rank of a hand of five distinct ranks from its `or_rank_bits()`.
+    ///
+    /// The guard is `>=`, not pkcore's `>` (`pkcore/src/arrays/five.rs:169-173`).
+    /// [`Five::POSSIBLE_COMBINATIONS`] is a **count**, not a maximum index, and
+    /// `UNIQUE_5` is `[u16; 7937]`, so `index == 7937` slipped past the original guard
+    /// and panicked on an out-of-bounds index. Unreachable through the evaluator —
+    /// `or_rank_bits()` for five cards sets at most 5 of 13 bits, topping out at
+    /// `0b1111100000000 == 7936`, exactly the last valid index — but reachable by any
+    /// caller passing a raw index to this public function.
     #[allow(clippy::cast_possible_truncation)]
     #[must_use]
     pub fn unique_rank(index: usize) -> HandRankValue {
-        if index > Five::POSSIBLE_COMBINATIONS {
+        if index >= Five::POSSIBLE_COMBINATIONS {
             return Card::BLANK_NUMBER as HandRankValue;
         }
         lookups::unique_rank(index)
@@ -2566,10 +2604,22 @@ mod arrays__five_tests {
     ) {
         let hand = Five::from_str(index).unwrap();
 
-        // let hand_rank_value = hand.hand_rank_value();
         let (hand_rank, five) = hand.hand_rank_and_hand();
 
+        // Task 11 Step 2d flagged the next line: `hand.sort().clean()` is
+        // character-for-character the expression `hand_rank_value_and_hand` returns
+        // (five.rs:323), so the test recomputes the implementation and compares it to
+        // itself. It is not empty — it pins the delegation, and catches a change to
+        // *which* five is returned (unsorted, unclean, defaulted) — but it is blind in
+        // one direction: a bug inside `sort()` or `clean()` corrupts both sides
+        // identically and stays green. Kept for what it does cover.
         assert_eq!(hand.sort().clean(), five);
+
+        // Added as the independently-grounded companion: the five cards handed back must
+        // actually be worth the rank claimed for them. `expected_value` is a hand-written
+        // literal ported from pkcore and pinned for every C(52,5) hand by the golden
+        // oracle, so this side does not derive from `sort`/`clean` at all.
+        assert_eq!(expected_value, five.hand_rank_value(), "returned hand must earn the claimed rank");
         assert_eq!(expected_value, hand_rank.value);
         assert_eq!(expected_name, hand_rank.name);
         assert_eq!(expected_class, hand_rank.class);
@@ -2778,6 +2828,66 @@ mod arrays__five_tests {
             NO_HAND_RANK_VALUE,
             crate::standard52::evaluate::five_cards([Card::BLANK; 5])
         );
+    }
+
+    //endregion
+
+    //region Task 10 additions
+
+    /// A `Card` whose bits are neither a real `CardNumber` nor `BLANK`, built the direct
+    /// way: `Card::from(23)` sanitizes to `BLANK`, and the tuple field is `pub(crate)`, so
+    /// this particular construction is in-crate only.
+    ///
+    /// It is **not** the only route. Every *constructor* sanitizes, but
+    /// [`Card::frequency_paired`] and its siblings are public *transformations* that set
+    /// bits 29..=31 on an already-valid card, which no `CardNumber` sets — so a caller
+    /// outside the crate can reach a corrupt `Card` too. See
+    /// `tests/invalid_hands.rs::frequency_flagged_cards_are_corrupt_through_public_api`,
+    /// which pins that path. This test keeps the in-crate route covered because it is the
+    /// cheaper one to reason about, not because it is the only one.
+    ///
+    /// Why 23 is not a card, argued from the bit layout rather than from the validator:
+    /// every `CardNumber` sets exactly one bit of the suit nibble (`SUIT_FLAG_FILTER`,
+    /// bits 12..=15) and exactly one bit of the rank field (`RANK_FLAG_FILTER`,
+    /// bits 16..=28). `23 == 0b10111` sets neither.
+    #[test]
+    fn is_corrupt_rejects_a_non_cardnumber_hand() {
+        let corrupt = Card(23); // not blank, not a duplicate, not a CardNumber
+        assert_ne!(Card::BLANK, corrupt);
+        assert_eq!(0, corrupt.as_u32() & (Card::SUIT_FLAG_FILTER | Card::RANK_FLAG_FILTER));
+
+        let hand = Five::from([
+            Card::JACK_CLUBS,
+            Card::DEUCE_CLUBS,
+            corrupt,
+            Card::KING_SPADES,
+            Card::TEN_SPADES,
+        ]);
+
+        // The distinguishing property: unique and non-blank, yet still invalid.
+        assert!(hand.are_unique());
+        assert!(!hand.contains_blank());
+        assert!(hand.is_corrupt());
+        assert!(!hand.is_valid());
+
+        assert_eq!(NO_HAND_RANK_VALUE, hand.hand_rank_value());
+    }
+
+    /// The corresponding negative: `is_dealt`-shaped logic would have accepted that hand.
+    /// This is the difference `is_valid` actually makes, stated as a test rather than a
+    /// claim in a design doc.
+    #[test]
+    fn a_corrupt_hand_passes_the_weaker_is_dealt_style_check() {
+        let hand = Five::from([
+            Card::JACK_CLUBS,
+            Card::DEUCE_CLUBS,
+            Card(23),
+            Card::KING_SPADES,
+            Card::TEN_SPADES,
+        ]);
+
+        assert!(hand.are_unique() && !hand.contains_blank()); // pkcore's is_dealt: passes
+        assert!(!hand.is_valid()); // ours: rejects
     }
 
     //endregion
