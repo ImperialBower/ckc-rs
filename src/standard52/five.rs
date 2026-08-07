@@ -28,6 +28,27 @@ impl Five {
     pub const STRAIGHT_PADDING: u32 = 27;
     pub const WHEEL_OR_BITS: u32 = 0b0001000000001111;
 
+    /// The headline entry point into the evaluator. Returns `NO_HAND_RANK_VALUE` (0)
+    /// for any hand that is not five distinct, well-formed cards.
+    ///
+    /// ```
+    /// use ckc_rs::prelude::*;
+    ///
+    /// let royal_flush = [
+    ///     Card::ACE_SPADES,
+    ///     Card::KING_SPADES,
+    ///     Card::QUEEN_SPADES,
+    ///     Card::JACK_SPADES,
+    ///     Card::TEN_SPADES,
+    /// ];
+    ///
+    /// assert_eq!(1, Five::eval(royal_flush));
+    /// ```
+    #[must_use]
+    pub fn eval(cards: [Card; 5]) -> HandRankValue {
+        Five::from(cards).hand_rank_value()
+    }
+
     //region accessors
     #[must_use]
     pub fn first(&self) -> Card {
@@ -2815,19 +2836,13 @@ mod arrays__five_tests {
         assert_eq!(Five(ROYAL_FLUSH), paired.clean());
     }
 
-    /// The `evaluate` module is the crate's headline entry point; it must agree with the
+    /// `Five::eval` is the crate's headline entry point; it must agree with the
     /// `HandRanker` method it wraps.
     #[test]
-    fn evaluate__five_cards() {
-        assert_eq!(1, crate::standard52::evaluate::five_cards(ROYAL_FLUSH));
-        assert_eq!(
-            Five::from(ROYAL_FLUSH).hand_rank_value(),
-            crate::standard52::evaluate::five_cards(ROYAL_FLUSH)
-        );
-        assert_eq!(
-            NO_HAND_RANK_VALUE,
-            crate::standard52::evaluate::five_cards([Card::BLANK; 5])
-        );
+    fn eval() {
+        assert_eq!(1, Five::eval(ROYAL_FLUSH));
+        assert_eq!(Five::from(ROYAL_FLUSH).hand_rank_value(), Five::eval(ROYAL_FLUSH));
+        assert_eq!(NO_HAND_RANK_VALUE, Five::eval([Card::BLANK; 5]));
     }
 
     //endregion

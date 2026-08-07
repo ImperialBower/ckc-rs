@@ -13,7 +13,7 @@ Lookup tables borrowed from Vladislav Supalov's
 [Cactus Kev's work in C](https://suffe.cool/poker/code/).
 
 ```rust
-use ckc_rs::standard52::{Card, evaluate};
+use ckc_rs::standard52::{Card, Five};
 
 let royal = [
     Card::ACE_SPADES,
@@ -24,7 +24,7 @@ let royal = [
 ];
 
 // 1 is the best possible hand; 7462 is the worst. Lower wins.
-assert_eq!(1, evaluate::five_cards(royal));
+assert_eq!(1, Five::eval(royal));
 ```
 
 ## What's here
@@ -39,9 +39,9 @@ without disturbing this one.
 | `CardNumber` | the 52 canonical card values as an enum |
 | `Rank`, `Suit`, `SuitShift` | the card's components |
 | `Five`, `Six`, `Seven` | fixed-size hands |
+| `Five::eval` | the headline entry point |
 | `HandRanker`, `HandValidator` | evaluate and validate a hand |
 | `HandRank`, `HandRankName`, `HandRankClass` | a rank and its human meaning |
-| `evaluate::five_cards` | the headline entry point |
 | `CkcError` | the crate's error type |
 
 Hands of more than five cards evaluate every five-card subset and return the best:

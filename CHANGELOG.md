@@ -17,7 +17,7 @@ cardpack.rs, fudd, and pokerhand as the single copy of the evaluator.
 - `standard52` namespace holding everything French-deck-specific: `Card` (a
   `u32` newtype in the Cactus Kev bit layout), `CardNumber`, `Rank`, `Suit`,
   `SuitShift`, `Five`/`Six`/`Seven`, `HandRank`/`HandRankName`/`HandRankClass`,
-  `HandRanker`, `HandValidator`, and `evaluate::five_cards`. Deliberately no
+  `HandRanker`, `HandValidator`, and `Five::eval`. Deliberately no
   root glob re-export, so a future deck family is an addition rather than a
   breaking reshuffle.
 - `CkcError` (implements `core::error::Error`).

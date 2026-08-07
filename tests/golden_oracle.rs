@@ -4,7 +4,7 @@
 //! Enumeration order MUST match `tools/oracle-gen/src/main.rs` exactly:
 //! nested strictly-increasing indices over the deck in `CardNumber::ALL` order.
 
-use ckc_rs::standard52::{Card, CardNumber, evaluate};
+use ckc_rs::standard52::{Card, CardNumber, Five};
 
 const EXPECTED_HANDS: usize = 2_598_960;
 
@@ -61,7 +61,7 @@ fn every_five_card_hand_matches_the_frozen_oracle() {
                 for d in (c + 1)..52 {
                     for e in (d + 1)..52 {
                         let want = u16::from_le_bytes([golden[idx], golden[idx + 1]]);
-                        let got = evaluate::five_cards([deck[a], deck[b], deck[c], deck[d], deck[e]]);
+                        let got = Five::eval([deck[a], deck[b], deck[c], deck[d], deck[e]]);
                         assert_eq!(got, want, "hand {a},{b},{c},{d},{e} — expected {want}, got {got}");
                         idx += 2;
                         checked += 1;

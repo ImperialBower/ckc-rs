@@ -9,8 +9,6 @@ pub use card::Card;
 pub mod card_number;
 pub use card_number::CardNumber;
 
-pub mod evaluate;
-
 pub mod five;
 pub use five::Five;
 

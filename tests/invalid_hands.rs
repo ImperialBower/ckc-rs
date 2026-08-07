@@ -12,7 +12,7 @@
 //! crate-internal access — pinned below by
 //! `frequency_flagged_cards_are_corrupt_through_public_api`.
 
-use ckc_rs::standard52::{Card, Five, HandRanker, HandValidator, NO_HAND_RANK_VALUE, Six, evaluate};
+use ckc_rs::standard52::{Card, Five, HandRanker, HandValidator, NO_HAND_RANK_VALUE, Six};
 
 #[test]
 fn duplicate_cards_yield_no_rank() {
@@ -23,7 +23,7 @@ fn duplicate_cards_yield_no_rank() {
         Card::KING_SPADES,
         Card::JACK_CLUBS, // dupe of the first
     ];
-    assert_eq!(evaluate::five_cards(hand), NO_HAND_RANK_VALUE);
+    assert_eq!(Five::eval(hand), NO_HAND_RANK_VALUE);
     assert_eq!(Five::from(hand).hand_rank_value(), NO_HAND_RANK_VALUE);
 }
 
@@ -36,7 +36,7 @@ fn blank_card_yields_no_rank() {
         Card::KING_SPADES,
         Card::BLANK,
     ];
-    assert_eq!(evaluate::five_cards(hand), NO_HAND_RANK_VALUE);
+    assert_eq!(Five::eval(hand), NO_HAND_RANK_VALUE);
     assert_eq!(Five::from(hand).hand_rank_value(), NO_HAND_RANK_VALUE);
 }
 
@@ -58,14 +58,14 @@ fn from_u32_sanitizes_rather_than_producing_a_corrupt_card() {
         Card::KING_SPADES,
         Card::TEN_SPADES,
     ];
-    assert_eq!(evaluate::five_cards(hand), NO_HAND_RANK_VALUE);
+    assert_eq!(Five::eval(hand), NO_HAND_RANK_VALUE);
     assert_eq!(Five::from(hand).hand_rank_value(), NO_HAND_RANK_VALUE);
 }
 
 #[test]
 fn all_blanks_yield_no_rank() {
     let hand = [Card::BLANK; 5];
-    assert_eq!(evaluate::five_cards(hand), NO_HAND_RANK_VALUE);
+    assert_eq!(Five::eval(hand), NO_HAND_RANK_VALUE);
 }
 
 /// Regression pin: a valid hand must still evaluate, so the guard cannot be
@@ -82,7 +82,7 @@ fn valid_hands_still_evaluate() {
         Card::JACK_SPADES,
         Card::TEN_SPADES,
     ];
-    assert_eq!(evaluate::five_cards(royal), 1);
+    assert_eq!(Five::eval(royal), 1);
 }
 
 /// Inherited off-by-one: `POSSIBLE_COMBINATIONS` is a count, not a max index, so

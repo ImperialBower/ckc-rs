@@ -3,7 +3,7 @@
 //! the shared hand parser/collector.
 //!
 //! `HandRanker` is the poker half of pkcore's version (`pkcore/src/arrays/mod.rs:51`);
-//! the Razz methods and `eval()` deliberately stay in pkcore.
+//! the Razz methods deliberately stay in pkcore.
 //!
 //! `HandValidator` is revived from ckc-rs 0.1 (`src/cards/mod.rs:32-57`), because
 //! pkcore has no equivalent: its validity check is `Pile::is_dealt()`, and `Pile`

@@ -10,7 +10,7 @@
 //! corrupted entry passed. Verified by mutation: changing the last row to
 //! `[2, 3, 4, 5, 5]` left the self-referential version green.
 
-use ckc_rs::standard52::{Card, CardNumber, HandRanker, Seven, Six, evaluate};
+use ckc_rs::standard52::{Card, CardNumber, Five, HandRanker, Seven, Six};
 
 fn deck() -> [Card; 52] {
     let mut deck = [Card::BLANK; 52];
@@ -22,7 +22,7 @@ fn deck() -> [Card; 52] {
 
 /// The best five-card rank over **every** five-element subset of `cards`, enumerated
 /// independently of the type's permutation table and evaluated with
-/// `evaluate::five_cards` — the function the golden oracle already pins exhaustively.
+/// `Five::eval` — the function the golden oracle already pins exhaustively.
 fn best_of_all_subsets<const N: usize>(cards: [Card; N]) -> u16 {
     let mut best = 0u16;
     for i in 0..N {
@@ -30,7 +30,7 @@ fn best_of_all_subsets<const N: usize>(cards: [Card; N]) -> u16 {
             for k in (j + 1)..N {
                 for l in (k + 1)..N {
                     for m in (l + 1)..N {
-                        let hrv = evaluate::five_cards([cards[i], cards[j], cards[k], cards[l], cards[m]]);
+                        let hrv = Five::eval([cards[i], cards[j], cards[k], cards[l], cards[m]]);
                         if hrv != 0 && (best == 0 || hrv < best) {
                             best = hrv;
                         }
@@ -71,7 +71,7 @@ fn permutation_tables_are_the_complete_subset_enumeration() {
 }
 
 /// A seven-card hand must rank exactly as well as the best of its 21 five-card
-/// subsets — checked against `evaluate::five_cards`, which the golden oracle
+/// subsets — checked against `Five::eval`, which the golden oracle
 /// already pins exhaustively.
 #[test]
 fn seven_matches_best_of_twenty_one_subsets() {
