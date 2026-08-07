@@ -1,3 +1,18 @@
+# DO NOT DELETE THIS FILE, even though the 0.2.0 migration it was written for is
+# finished. It has a second job that is invisible from here: `tests/golden_oracle.rs`
+# tests for this file's existence to tell a git checkout apart from an extracted
+# `.crate` tarball. Both `tools/*` and `tests/golden/*` are `exclude`d from the
+# published package, so their presence is perfectly correlated — the fixture is
+# required in a checkout and absent from a tarball. Delete this and nothing appears
+# to break, but a checkout that loses tests/golden/five_card_ranks.bin will silently
+# SKIP the exhaustive oracle test instead of failing, which is exactly the hollow
+# gate that test was built to prevent.
+#
+# This crate is deliberately NOT a workspace member (the root Cargo.toml has no
+# [workspace] section), so `ckc-rs` below resolves from crates.io rather than the
+# local source. An oracle that compiled against the code under test would prove
+# nothing.
+
 [package]
 name = "oracle-gen"
 version = "0.0.0"
@@ -5,4 +20,8 @@ edition = "2021"
 publish = false
 
 [dependencies]
-ckc-rs = "0.1.18"
+# `=`, not `^`. This is the frozen reference implementation for the whole 0.2.0
+# migration; a caret range would let a hypothetical 0.1.19 silently become the
+# ground truth on the next regeneration. 0.1.18 is the last 0.1.x release and the
+# only version tests/golden/five_card_ranks.bin was generated from.
+ckc-rs = "=0.1.18"
