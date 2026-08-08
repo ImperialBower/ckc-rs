@@ -10,15 +10,7 @@
 //! corrupted entry passed. Verified by mutation: changing the last row to
 //! `[2, 3, 4, 5, 5]` left the self-referential version green.
 
-use ckc_rs::standard52::{Card, CardNumber, Five, HandRanker, Seven, Six};
-
-fn deck() -> [Card; 52] {
-    let mut deck = [Card::BLANK; 52];
-    for (i, cn) in CardNumber::ALL.iter().enumerate() {
-        deck[i] = Card::from(*cn as u32);
-    }
-    deck
-}
+use ckc_rs::standard52::{Card, Five, HandRanker, Seven, Six};
 
 /// The best five-card rank over **every** five-element subset of `cards`, enumerated
 /// independently of the type's permutation table and evaluated with
@@ -75,7 +67,7 @@ fn permutation_tables_are_the_complete_subset_enumeration() {
 /// already pins exhaustively.
 #[test]
 fn seven_matches_best_of_twenty_one_subsets() {
-    let deck = deck();
+    let deck = Card::deck();
     // Deterministic stride sample: every 9973rd (prime) 7-card index.
     let mut n = 0u64;
     let mut checked = 0u32;
@@ -109,7 +101,7 @@ fn seven_matches_best_of_twenty_one_subsets() {
 /// `Six` is otherwise covered only by the two unit tests in `six.rs`.
 #[test]
 fn six_matches_best_of_six_subsets() {
-    let deck = deck();
+    let deck = Card::deck();
     let mut n = 0u64;
     let mut checked = 0u32;
 
@@ -144,7 +136,7 @@ fn six_matches_best_of_six_subsets() {
 #[test]
 #[ignore]
 fn seven_exhaustive() {
-    let deck = deck();
+    let deck = Card::deck();
     let mut count = 0u64;
     for a in 0..52 {
         for b in (a + 1)..52 {

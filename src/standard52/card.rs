@@ -124,6 +124,86 @@ impl Card {
     const GUIDE: &'static str = "xxxAKQJT 98765432 ♠♥♦♣rrrr xxpppppp";
     //endregion
 
+    /// A full French deck in [`CardNumber::ALL`] order: spades, hearts, diamonds, clubs,
+    /// each ace-high to deuce.
+    ///
+    /// This order is not cosmetic. It is the coordinate system of the golden oracle —
+    /// `tests/golden/five_card_ranks.bin` stores the 2,598,960 hands as nested
+    /// strictly-increasing indices into this array, and `tools/oracle-gen` wrote them in
+    /// the equivalent order under ckc-rs 0.1.18. A deck built in any other order silently
+    /// compares different hands rather than failing, so there is exactly one of these.
+    ///
+    /// Written out rather than derived from [`CardNumber::ALL`] so the order is visible
+    /// at the one place that claims it matters. That makes the 52 entries a transcription,
+    /// which `deck_matches_card_number_order` checks against `CardNumber::ALL`.
+    ///
+    /// ```
+    /// use ckc_rs::prelude::*;
+    ///
+    /// let deck = Card::deck();
+    ///
+    /// assert_eq!(52, deck.len());
+    /// assert_eq!(Card::ACE_SPADES, deck[0]);
+    /// assert_eq!(Card::DEUCE_CLUBS, deck[51]);
+    /// ```
+    #[must_use]
+    pub const fn deck() -> [Card; 52] {
+        [
+            Card::ACE_SPADES,
+            Card::KING_SPADES,
+            Card::QUEEN_SPADES,
+            Card::JACK_SPADES,
+            Card::TEN_SPADES,
+            Card::NINE_SPADES,
+            Card::EIGHT_SPADES,
+            Card::SEVEN_SPADES,
+            Card::SIX_SPADES,
+            Card::FIVE_SPADES,
+            Card::FOUR_SPADES,
+            Card::TREY_SPADES,
+            Card::DEUCE_SPADES,
+            Card::ACE_HEARTS,
+            Card::KING_HEARTS,
+            Card::QUEEN_HEARTS,
+            Card::JACK_HEARTS,
+            Card::TEN_HEARTS,
+            Card::NINE_HEARTS,
+            Card::EIGHT_HEARTS,
+            Card::SEVEN_HEARTS,
+            Card::SIX_HEARTS,
+            Card::FIVE_HEARTS,
+            Card::FOUR_HEARTS,
+            Card::TREY_HEARTS,
+            Card::DEUCE_HEARTS,
+            Card::ACE_DIAMONDS,
+            Card::KING_DIAMONDS,
+            Card::QUEEN_DIAMONDS,
+            Card::JACK_DIAMONDS,
+            Card::TEN_DIAMONDS,
+            Card::NINE_DIAMONDS,
+            Card::EIGHT_DIAMONDS,
+            Card::SEVEN_DIAMONDS,
+            Card::SIX_DIAMONDS,
+            Card::FIVE_DIAMONDS,
+            Card::FOUR_DIAMONDS,
+            Card::TREY_DIAMONDS,
+            Card::DEUCE_DIAMONDS,
+            Card::ACE_CLUBS,
+            Card::KING_CLUBS,
+            Card::QUEEN_CLUBS,
+            Card::JACK_CLUBS,
+            Card::TEN_CLUBS,
+            Card::NINE_CLUBS,
+            Card::EIGHT_CLUBS,
+            Card::SEVEN_CLUBS,
+            Card::SIX_CLUBS,
+            Card::FIVE_CLUBS,
+            Card::FOUR_CLUBS,
+            Card::TREY_CLUBS,
+            Card::DEUCE_CLUBS,
+        ]
+    }
+
     #[must_use]
     pub fn new(rank: Rank, suit: Suit) -> Self {
         Self::from(rank.bits() | rank.prime() | rank.shift8() | suit.binary_signature())
@@ -685,6 +765,45 @@ mod card_tests {
         assert_eq!(Card::default().get_suit(), Suit::BLANK);
     }
     //endregion tests
+
+    /// `Card::deck`'s 52 entries are hand-written, and their order is the golden oracle's
+    /// coordinate system. This is the only thing that checks that transcription against
+    /// `CardNumber::ALL` — without it, a swapped pair surfaces 2,598,960 hands later as an
+    /// oracle mismatch, or not at all in a package tarball, where `golden_oracle` skips.
+    ///
+    /// The two sides are genuinely independent: `Card::deck` names its cards through the
+    /// `Card::*` consts, this reaches `CardNumber::ALL` directly. Deriving the deck from
+    /// `CardNumber::ALL` instead would make this compare the array against itself and pass
+    /// through any reordering — the same self-referential trap `tests/seven_card.rs`
+    /// documents for `Seven::FIVE_CARD_PERMUTATIONS`.
+    #[test]
+    fn deck_matches_card_number_order() {
+        let deck = Card::deck();
+
+        assert_eq!(52, deck.len());
+        for (i, cn) in CardNumber::ALL.iter().enumerate() {
+            assert_eq!(Card::from(*cn as u32), deck[i], "deck[{i}] is not CardNumber::ALL[{i}]");
+            assert_ne!(Card::BLANK, deck[i], "deck[{i}] sanitized to BLANK");
+        }
+    }
+
+    /// The deck is a permutation of the 52 cards, not merely 52 cards.
+    #[test]
+    fn deck_is_ordered_and_has_no_duplicates() {
+        let deck = Card::deck();
+
+        assert_eq!(Card::ACE_SPADES, deck[0]);
+        assert_eq!(Card::DEUCE_SPADES, deck[12]);
+        assert_eq!(Card::ACE_HEARTS, deck[13]);
+        assert_eq!(Card::ACE_CLUBS, deck[39]);
+        assert_eq!(Card::DEUCE_CLUBS, deck[51]);
+
+        for (i, a) in deck.iter().enumerate() {
+            for b in &deck[i + 1..] {
+                assert_ne!(a, b, "duplicate card in Card::deck()");
+            }
+        }
+    }
 
     #[test]
     fn from_str() {
