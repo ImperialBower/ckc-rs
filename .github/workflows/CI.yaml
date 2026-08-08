@@ -17,7 +17,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        rust: [beta, stable, 1.70.0]
+        # 1.85.0 is the MSRV declared in Cargo.toml. It was `1.70.0` here until
+        # EPIC-80, which moved the crate to edition 2024 — an edition older Cargo
+        # cannot even parse ("this version of Cargo is older than the `2024`
+        # edition"), so that leg could only ever have been red or inert.
+        rust: [beta, stable, 1.85.0]
         include:
           - rust: nightly
             rustflags: --cfg thiserror_nightly_testing
@@ -29,9 +33,17 @@ jobs:
         with:
           toolchain: ${{matrix.rust}}
           components: rust-src
+      # `RUSTUP_TOOLCHAIN` is load-bearing, not belt-and-braces. `rust-toolchain.toml`
+      # pins channel 1.85, and dtolnay/rust-toolchain selects its toolchain with
+      # `rustup default` only — which the toml outranks. Without this, every leg of
+      # this matrix silently ran 1.85, so it tested one toolchain four times while
+      # reporting four. The env var outranks the toml, so the leg now runs what it says.
+      # Set on this step rather than at job level so it applies only after the action
+      # has installed the toolchain.
       - run: cargo test --all
         env:
           RUSTFLAGS: ${{matrix.rustflags}} ${{env.RUSTFLAGS}}
+          RUSTUP_TOOLCHAIN: ${{matrix.rust}}
 
   clippy:
     name: Clippy
@@ -61,3 +73,68 @@ jobs:
           toolchain: stable
           components: rustfmt, rust-src
       - run: cargo fmt --all -- --check
+
+  # ---------------------------------------------------------------------------
+  # EPIC-80 Phase 4. These three jobs lock in the properties that make ckc-rs
+  # 0.2 a kernel rather than just a library: it builds without an OS, it pulls
+  # in nothing, and it is clean at pedantic. Each was run locally from a clean
+  # target/ under this workflow's own `RUSTFLAGS: -Dwarnings` before being
+  # written down.
+  #
+  # `rust-toolchain.toml` pins channel 1.85 and takes precedence over the
+  # toolchain the action selects, so the cross-target jobs add their targets
+  # with an explicit `rustup target add` step rather than via the action's
+  # `targets:` input — that way the targets land on whichever toolchain cargo
+  # actually resolves in this directory.
+  # ---------------------------------------------------------------------------
+
+  no_std:
+    name: no_std targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.85.0
+          components: rust-src
+      - name: Add bare-metal and wasm targets
+        run: rustup target add thumbv7em-none-eabi wasm32-unknown-unknown
+      - name: Build bare-metal (thumbv7em-none-eabi)
+        run: cargo build --no-default-features --features standard52 --target thumbv7em-none-eabi
+      - name: Build wasm32 (wasm32-unknown-unknown)
+        run: cargo build --no-default-features --features standard52 --target wasm32-unknown-unknown
+
+  zero_deps:
+    name: zero default dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.85.0
+      # `-e normal` is load-bearing: without it `cargo tree` also walks
+      # dev-dependency edges, so rstest and its ~47 transitive crates get
+      # counted and the assertion is permanently red.
+      - name: Assert the dependency tree is just ckc-rs
+        run: |
+          cargo tree -e normal --no-default-features --features standard52
+          COUNT=$(cargo tree -e normal --no-default-features --features standard52 | wc -l)
+          echo "dependency tree lines: $COUNT"
+          test "$COUNT" -eq 1
+
+  clippy_pedantic:
+    name: clippy pedantic
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.85.0
+          components: clippy, rust-src
+      # Strictly dominates the `clippy` job above, which covers neither
+      # --all-features nor --all-targets (so test code is otherwise unlinted).
+      # Note `-Dwarnings` alone would NOT enable the pedantic group.
+      - run: cargo clippy --all-features --all-targets -- -Dclippy::all -Dclippy::pedantic -Dwarnings

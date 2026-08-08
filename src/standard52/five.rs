@@ -1,11 +1,25 @@
-use crate::cards::{HandRanker, HandValidator};
-use crate::hand_rank::HandRankValue;
-use crate::{CKCNumber, CardNumber, HandError, PokerCard, Shifty};
+use crate::CkcError;
+use crate::standard52::arrays::{HandRanker, HandValidator, parse_hand};
+use crate::standard52::card::Card;
+use crate::standard52::hand_rank::{HandRankValue, NO_HAND_RANK_VALUE};
+use crate::standard52::lookups;
+use core::fmt::{self, Display, Formatter};
 use core::slice::Iter;
-use serde::{Deserialize, Serialize};
+use core::str::FromStr;
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct Five([CKCNumber; 5]);
+#[cfg(feature = "alloc")]
+use crate::standard52::arrays::collect_hand;
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+/// The most important type in the library. `Five` `Cards` is the core of the game.
+/// It's the best five cards that determine who wins.
+///
+/// IDEA: The hub and spoke.
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Five(pub(crate) [Card; 5]);
 
 impl Five {
     pub const POSSIBLE_COMBINATIONS: usize = 7937;
@@ -14,121 +28,81 @@ impl Five {
     pub const STRAIGHT_PADDING: u32 = 27;
     pub const WHEEL_OR_BITS: u32 = 0b0001000000001111;
 
+    /// The headline entry point into the evaluator. Returns `NO_HAND_RANK_VALUE` (0)
+    /// for any hand that is not five distinct, well-formed cards.
+    ///
+    /// ```
+    /// use ckc_rs::prelude::*;
+    ///
+    /// let royal_flush = [
+    ///     Card::ACE_SPADES,
+    ///     Card::KING_SPADES,
+    ///     Card::QUEEN_SPADES,
+    ///     Card::JACK_SPADES,
+    ///     Card::TEN_SPADES,
+    /// ];
+    ///
+    /// assert_eq!(1, Five::eval(royal_flush));
+    /// ```
     #[must_use]
-    pub fn new(first: CKCNumber, second: CKCNumber, third: CKCNumber, forth: CKCNumber, fifth: CKCNumber) -> Self {
-        Self([first, second, third, forth, fifth])
+    pub fn eval(cards: [Card; 5]) -> HandRankValue {
+        Five::from(cards).hand_rank_value()
     }
 
     //region accessors
+    #[must_use]
+    pub fn first(&self) -> Card {
+        self.0[0]
+    }
 
     #[must_use]
-    pub fn second(&self) -> CKCNumber {
+    pub fn second(&self) -> Card {
         self.0[1]
     }
 
     #[must_use]
-    pub fn third(&self) -> CKCNumber {
+    pub fn third(&self) -> Card {
         self.0[2]
     }
 
     #[must_use]
-    pub fn forth(&self) -> CKCNumber {
+    pub fn forth(&self) -> Card {
         self.0[3]
     }
 
     #[must_use]
-    pub fn fifth(&self) -> CKCNumber {
+    pub fn fifth(&self) -> Card {
         self.0[4]
     }
 
-    pub fn set_first(&mut self, card_number: CKCNumber) {
-        self.0[0] = card_number;
-    }
-
-    pub fn set_second(&mut self, card_number: CKCNumber) {
-        self.0[1] = card_number;
-    }
-
-    pub fn set_third(&mut self, card_number: CKCNumber) {
-        self.0[2] = card_number;
-    }
-
-    pub fn set_forth(&mut self, card_number: CKCNumber) {
-        self.0[3] = card_number;
-    }
-
-    pub fn set_fifth(&mut self, card_number: CKCNumber) {
-        self.0[4] = card_number;
+    pub fn iter(&self) -> Iter<'_, Card> {
+        self.0.iter()
     }
 
     #[must_use]
-    pub fn to_arr(&self) -> [CKCNumber; 5] {
+    pub fn to_arr(&self) -> [Card; 5] {
         self.0
     }
-
     //endregion
 
-    fn from_index(index: &str) -> Option<[CKCNumber; 5]> {
-        let mut esses = index.split_whitespace();
-
-        let first = CKCNumber::from_index(esses.next()?);
-        let second = CKCNumber::from_index(esses.next()?);
-        let third = CKCNumber::from_index(esses.next()?);
-        let forth = CKCNumber::from_index(esses.next()?);
-        let fifth = CKCNumber::from_index(esses.next()?);
-        let hand: [CKCNumber; 5] = [first, second, third, forth, fifth];
-        Some(hand)
-    }
-
+    /// Moved here verbatim from pkcore's `impl Pile for Five` (`five.rs:306`), which
+    /// this crate does not carry: `hand_rank_value_and_hand` calls `self.sort().clean()`.
     #[must_use]
-    #[allow(clippy::comparison_chain)]
-    pub fn find_in_products(key: usize) -> usize {
-        let mut low = 0;
-        let mut high = 4887;
-        let mut mid;
-
-        while low <= high {
-            mid = (high + low) >> 1; // divide by two
-
-            let product = crate::lookups::products::PRODUCTS[mid] as usize;
-            if key < product {
-                high = mid - 1;
-            } else if key > product {
-                low = mid + 1;
-            } else {
-                return mid;
-            }
-        }
-        0
-    }
-
-    fn not_unique(&self) -> HandRankValue {
-        crate::lookups::values::VALUES[Five::find_in_products(self.multiply_primes())]
-    }
-
-    #[allow(clippy::cast_possible_truncation)]
-    fn unique(index: usize) -> HandRankValue {
-        if index > Five::POSSIBLE_COMBINATIONS {
-            return CardNumber::BLANK as HandRankValue;
-        }
-        crate::lookups::unique5::UNIQUE_5[index]
-    }
-
-    //endregion
-
-    //region bitwise
-
-    #[must_use]
-    pub fn and_bits(&self) -> u32 {
-        self.first() & self.second() & self.third() & self.forth() & self.fifth()
+    pub fn clean(&self) -> Self {
+        Five([
+            self.first().clean(),
+            self.second().clean(),
+            self.third().clean(),
+            self.forth().clean(),
+            self.fifth().clean(),
+        ])
     }
 
     #[must_use]
     pub fn is_flush(&self) -> bool {
-        (self.and_bits() & CardNumber::SUIT_FILTER) != 0
+        (self.and_bits() & Card::SUIT_FLAG_FILTER) != 0
     }
 
-    /// WRITE: Unit testing uncovering how the padding method doesn't work for wheels.
     #[must_use]
     pub fn is_straight(&self) -> bool {
         let rank_bits = self.or_rank_bits();
@@ -146,6 +120,70 @@ impl Five {
         self.or_rank_bits() == Five::WHEEL_OR_BITS
     }
 
+    //region private functions
+
+    #[must_use]
+    pub fn and_bits(&self) -> u32 {
+        self.first().as_u32()
+            & self.second().as_u32()
+            & self.third().as_u32()
+            & self.forth().as_u32()
+            & self.fifth().as_u32()
+    }
+
+    /// Binary-searches `PRODUCTS` for this hand's rank-prime product, returning the
+    /// index of the match or `0` when the key is absent.
+    ///
+    /// Rewritten from pkcore's closed-interval form (`pkcore/src/arrays/five.rs:117-137`),
+    /// which did `high = mid - 1` and so underflowed `usize` whenever the key was below
+    /// every entry in the table — a subtract-with-overflow panic in debug and a wrap to
+    /// `usize::MAX` followed by an out-of-bounds index in release. That is reachable from
+    /// the public, unguarded surface: `multiply_primes()` returns `0` for an all-blank
+    /// hand, and `PRODUCTS[0]` is 48.
+    ///
+    /// This is the standard half-open search over the same table, so it returns the same
+    /// index for every key that is present and can change no evaluated rank. The golden
+    /// oracle is the proof.
+    ///
+    /// # The returned `0` is ambiguous — validate before calling
+    ///
+    /// `0` is both the not-found sentinel **and** a legitimate index: `PRODUCTS[0]` is
+    /// `48` = `2·2·2·2·3`, the rank-prime product of four deuces with a trey, whose rank
+    /// is `VALUES[0]` = `166`. A caller cannot tell "matched quad deuces" from "not in the
+    /// table", and [`Self::not_unique`] will report `166` for either.
+    ///
+    /// pkcore had this ambiguity already, for keys *above* the table. Removing the
+    /// underflow extends it to keys *below* the table, which previously panicked — a
+    /// crash traded for a defined but semantically wrong value. That is the better trade,
+    /// but it is a trade.
+    ///
+    /// This costs nothing on the evaluator path: [`HandRanker::hand_rank_value`] guards
+    /// with [`HandValidator::is_valid`] first, and for five distinct well-formed cards the
+    /// Cactus Kev table is exhaustive, so a genuine miss cannot occur. Callers reaching
+    /// this directly must validate first.
+    #[must_use]
+    #[allow(clippy::comparison_chain)]
+    pub fn find_in_products(&self) -> usize {
+        let key = self.multiply_primes();
+
+        let mut low = 0usize;
+        let mut high = 4888usize; // exclusive upper bound
+
+        while low < high {
+            let mid = usize::midpoint(low, high);
+
+            let product = lookups::product_at(mid) as usize;
+            if key < product {
+                high = mid;
+            } else if key > product {
+                low = mid + 1;
+            } else {
+                return mid;
+            }
+        }
+        0
+    }
+
     #[must_use]
     pub fn multiply_primes(&self) -> usize {
         (self.first().get_rank_prime()
@@ -156,106 +194,621 @@ impl Five {
     }
 
     #[must_use]
+    pub fn not_unique(&self) -> u16 {
+        lookups::value_at(self.find_in_products())
+    }
+
+    #[must_use]
     pub fn or_bits(&self) -> u32 {
-        self.first() | self.second() | self.third() | self.forth() | self.fifth()
+        self.first().as_u32()
+            | self.second().as_u32()
+            | self.third().as_u32()
+            | self.forth().as_u32()
+            | self.fifth().as_u32()
     }
 
     #[must_use]
     pub fn or_rank_bits(&self) -> u32 {
-        self.or_bits() >> CardNumber::RANK_FLAG_SHIFT
+        self.or_bits() >> Card::RANK_FLAG_SHIFT
     }
 
-    //endregion bitwise
+    /// Looks up the rank of a hand of five distinct ranks from its `or_rank_bits()`.
+    ///
+    /// The guard is `>=`, not pkcore's `>` (`pkcore/src/arrays/five.rs:169-173`).
+    /// [`Five::POSSIBLE_COMBINATIONS`] is a **count**, not a maximum index, and
+    /// `UNIQUE_5` is `[u16; 7937]`, so `index == 7937` slipped past the original guard
+    /// and panicked on an out-of-bounds index. Unreachable through the evaluator —
+    /// `or_rank_bits()` for five cards sets at most 5 of 13 bits, topping out at
+    /// `0b1111100000000 == 7936`, exactly the last valid index — but reachable by any
+    /// caller passing a raw index to this public function.
+    #[allow(clippy::cast_possible_truncation)]
+    #[must_use]
+    pub fn unique_rank(index: usize) -> HandRankValue {
+        if index >= Five::POSSIBLE_COMBINATIONS {
+            return Card::BLANK_NUMBER as HandRankValue;
+        }
+        lookups::unique_rank(index)
+    }
+
+    /// Sets each card's multiple-of-a-rank frequency flag from how many cards in the
+    /// hand share its rank, so that a plain numeric sort orders quads above trips above
+    /// pairs above singletons.
+    ///
+    /// This replaces pkcore's `self.cards().frequency_weighted()` (`pkcore/src/cards.rs:360`),
+    /// which routes through the pkcore-only `Cards` type. `Cards` is an `IndexSet`, so it
+    /// filters blanks and de-duplicates; `sort_in_place` therefore only reaches this path
+    /// when the hand is five distinct, non-blank cards, at which point grouping over
+    /// `self.0` is the identical grouping. The trailing sort/reverse `frequency_weighted`
+    /// applies is discarded by `sort_in_place`'s own `sort_unstable`, so it is not
+    /// reproduced here.
+    #[must_use]
+    fn frequency_weighted(&self) -> Five {
+        let mut weighted = self.0;
+        for card in &mut weighted {
+            let rank = card.get_rank();
+            *card = match self.0.iter().filter(|c| c.get_rank() == rank).count() {
+                1 => *card,
+                2 => card.frequency_paired(),
+                3 => card.frequency_tripped(),
+                _ => card.frequency_quaded(),
+            };
+        }
+        Five(weighted)
+    }
+    //endregion
 }
 
-impl From<[CKCNumber; 5]> for Five {
-    fn from(array: [CKCNumber; 5]) -> Self {
+/// Added by the kernel (pkcore has none): `Five` keeps its inherent `iter()`, and clippy's
+/// `iter_without_into_iter` wants the matching `IntoIterator`. A widening, not a change.
+impl<'a> IntoIterator for &'a Five {
+    type Item = &'a Card;
+    type IntoIter = Iter<'a, Card>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+impl Display for Five {
+    /// Renders the hand exactly as pkcore does.
+    ///
+    /// pkcore formats a `Five` as `self.cards()`, and `Pile::cards()` builds a
+    /// `Cards(IndexSet<Card>)` that **drops blanks and keeps only the first
+    /// occurrence of a repeated card** before joining the survivors with a single
+    /// space. Both steps are reproduced here, so `Five::default()` renders as the
+    /// empty string rather than `"__ __ __ __ __"` — which matters because
+    /// [`HandRanker::hand_rank_value_and_hand`] returns `Five::default()` for every
+    /// invalid hand.
+    ///
+    /// Unlike pkcore's version, which collects a `Vec<String>` to join, this
+    /// allocates nothing and so stays available without the `alloc` feature.
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut wrote = false;
+        for (i, card) in self.0.iter().enumerate() {
+            if *card == Card::BLANK || self.0[..i].contains(card) {
+                continue;
+            }
+            if wrote {
+                write!(f, " ")?;
+            }
+            write!(f, "{card}")?;
+            wrote = true;
+        }
+        Ok(())
+    }
+}
+
+impl From<[Card; 5]> for Five {
+    fn from(array: [Card; 5]) -> Self {
         Five(array)
     }
 }
 
-impl HandRanker for Five {
-    fn hand_rank_value_and_hand(&self) -> (HandRankValue, Five) {
-        let i = self.or_rank_bits() as usize;
-
-        let hrv: HandRankValue = if self.is_flush() {
-            crate::lookups::flushes::FLUSHES[i]
-        } else {
-            // Continue to evaluate if it's not a flush and the cards aren't
-            // unique (straight or high card).
-            let unique = Five::unique(i);
-            match unique {
-                0 => self.not_unique(),
-                _ => unique,
-            }
-        };
-
-        (hrv, *self)
-    }
-
-    fn hand_rank_value_validated(&self) -> HandRankValue {
-        if !self.is_valid() {
-            return crate::hand_rank::NO_HAND_RANK_VALUE;
-        }
-        self.hand_rank_value()
-    }
-}
-
 impl HandValidator for Five {
-    // TODO: macro?
     fn are_unique(&self) -> bool {
         !(1..5).any(|i| self.0[i..].contains(&self.0[i - 1]))
     }
 
-    fn first(&self) -> CKCNumber {
+    fn first(&self) -> Card {
         self.0[0]
     }
 
-    fn sort(&self) -> Five {
+    fn iter(&self) -> Iter<'_, Card> {
+        self.0.iter()
+    }
+}
+
+impl HandRanker for Five {
+    fn hand_rank_value(&self) -> HandRankValue {
+        if self.is_valid() {
+            let i = self.or_rank_bits() as usize;
+            let rank: u16 = if self.is_flush() {
+                lookups::flush_rank(i)
+            } else {
+                let unique = Five::unique_rank(i);
+                match unique {
+                    0 => self.not_unique(),
+                    _ => unique,
+                }
+            };
+            rank
+        } else {
+            NO_HAND_RANK_VALUE
+        }
+    }
+
+    fn hand_rank_value_and_hand(&self) -> (HandRankValue, Five) {
+        let hrv = self.hand_rank_value();
+        match hrv {
+            NO_HAND_RANK_VALUE => (NO_HAND_RANK_VALUE, Five::default()),
+            _ => (hrv, self.sort().clean()),
+        }
+    }
+
+    /// This isn't used for `Five` since there is only one permutation.
+    fn five_from_permutation(&self, _permutation: [usize; 5]) -> Five {
+        *self
+    }
+
+    fn sort(&self) -> Self {
         let mut array = *self;
         array.sort_in_place();
         array
     }
 
+    /// TODO RF for all that is sacred RF
     fn sort_in_place(&mut self) {
-        self.0.sort_unstable();
+        if self.is_wheel() {
+            // Wheel after sort: 2♠ 3♠ 4♠ 5♥ A♠
+            // Put the last card Ace into the first slot so that when the hand is reversed it will
+            // be last.
+            // // TODO RF: MEGA Hack :-P
+            self.0.sort_unstable();
+            let wheel = [self.fifth(), self.first(), self.second(), self.third(), self.forth()];
+            self.0 = wheel;
+        } else {
+            // pkcore: `Five::try_from(self.cards().frequency_weighted())`, whose `Err` arm is
+            // reached exactly when the hand is not five distinct, non-blank cards — i.e. when
+            // `Pile::is_dealt()` is false. See `Five::frequency_weighted`.
+            let five = if self.are_unique() && !self.contains_blank() {
+                self.frequency_weighted().to_arr()
+            } else {
+                self.0
+            };
+            // TODO RF: Hack :-P
+            let mut five = Five(five);
+            five.0.sort_unstable();
+            five = five.clean();
+            self.0 = five.0;
+            // self.0.sort_unstable();
+
+            // let mut cleaned = Five::from(five);
+            // cleaned.0.sort_unstable();
+            // self.0 = cleaned.clean().0;
+            // NOTE: I don't trust this code. When offered a mint, accept it. Write more tests.
+        }
         self.0.reverse();
     }
+}
 
-    fn iter(&self) -> Iter<'_, CKCNumber> {
-        self.0.iter()
+impl FromStr for Five {
+    type Err = CkcError;
+
+    /// Rewritten for the kernel: pkcore delegated to `Cards::from_str` and
+    /// `Five::try_from(Cards)`, neither of which follows the kernel down. The observable
+    /// behaviour is preserved — `,` and `-` are treated as separators (pkcore's
+    /// `Terminal::index_cleaner`), every token must parse as a `Card`, duplicates collapse,
+    /// and exactly five distinct cards must remain — but nothing is allocated.
+    ///
+    /// Task 9 lifted the body into the shared `parse_hand`, which `Six` and `Seven` also
+    /// use; the rules are unchanged.
+    ///
+    /// # Errors
+    ///
+    /// `CkcError::InvalidIndex` if a token is not a card, or if there are no tokens at all;
+    /// `CkcError::Incomplete` for fewer than five distinct cards; `CkcError::InvalidCardCount`
+    /// for more than five.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Five(parse_hand::<5>(s)?))
     }
 }
 
-impl TryFrom<&'static str> for Five {
-    type Error = HandError;
+#[cfg(feature = "alloc")]
+impl TryFrom<Vec<Card>> for Five {
+    type Error = CkcError;
 
-    fn try_from(index: &'static str) -> Result<Self, Self::Error> {
-        match Five::from_index(index) {
-            None => Err(HandError::InvalidIndex),
-            Some(five) => Ok(Five::from(five)),
-        }
+    fn try_from(vec: Vec<Card>) -> Result<Self, Self::Error> {
+        Ok(Five(collect_hand::<5, _>(vec.into_iter())?))
     }
 }
 
-impl Shifty for Five {
-    fn shift_suit(&self) -> Self {
-        Five([
-            self.first().shift_suit(),
-            self.second().shift_suit(),
-            self.third().shift_suit(),
-            self.forth().shift_suit(),
-            self.fifth().shift_suit(),
-        ])
+#[cfg(feature = "alloc")]
+impl TryFrom<Vec<&Card>> for Five {
+    type Error = CkcError;
+
+    fn try_from(v: Vec<&Card>) -> Result<Self, Self::Error> {
+        Ok(Five(collect_hand::<5, _>(v.into_iter().copied())?))
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl TryFrom<&Vec<Card>> for Five {
+    type Error = CkcError;
+
+    fn try_from(v: &Vec<Card>) -> Result<Self, Self::Error> {
+        Ok(Five(collect_hand::<5, _>(v.iter().copied())?))
     }
 }
 
 #[cfg(test)]
 #[allow(non_snake_case)]
-mod cards__five_tests {
+mod arrays__five_tests {
     use super::*;
-    use crate::hand_rank::{HandRankClass, HandRankName};
+    use crate::standard52::hand_rank_class::HandRankClass;
+    use crate::standard52::hand_rank_name::HandRankName;
+    use rstest::rstest;
+
+    #[cfg(feature = "alloc")]
     use alloc::format;
+    #[cfg(feature = "alloc")]
+    use alloc::string::ToString;
+    #[cfg(feature = "alloc")]
+    use alloc::vec;
+
+    const ROYAL_FLUSH: [Card; 5] = [
+        Card::ACE_DIAMONDS,
+        Card::KING_DIAMONDS,
+        Card::QUEEN_DIAMONDS,
+        Card::JACK_DIAMONDS,
+        Card::TEN_DIAMONDS,
+    ];
+
+    #[test]
+    fn to_arr() {
+        assert_eq!(ROYAL_FLUSH, Five(ROYAL_FLUSH).to_arr());
+    }
+
+    #[test]
+    fn is_flush() {
+        assert!(Five::from_str("A♠ K♠ Q♠ J♠ T♠").unwrap().is_flush());
+        assert!(!Five::from_str("A♠ K♥ Q♠ J♠ T♠").unwrap().is_flush());
+    }
+
+    #[test]
+    fn is_straight() {
+        assert!(Five::from_str("A♠ K♦ Q♠ J♥ T♠").unwrap().is_straight());
+        assert!(Five::from_str("9♠ K♠ Q♦ J♠ T♥").unwrap().is_straight());
+        assert!(Five::from_str("9♥ 8♠ Q♠ J♦ T♠").unwrap().is_straight());
+        assert!(Five::from_str("9♠ 8♥ 7♠ J♠ T♦").unwrap().is_straight());
+        assert!(Five::from_str("9♦ 8♠ 7♥ 6♠ T♠").unwrap().is_straight());
+        assert!(Five::from_str("9♠ 8♦ 7♠ 6♥ 5♠").unwrap().is_straight());
+        assert!(Five::from_str("4♠ 8♠ 7♦ 6♠ 5♥").unwrap().is_straight());
+        assert!(Five::from_str("4♥ 3♠ 7♠ 6♦ 5♠").unwrap().is_straight());
+        assert!(Five::from_str("4♠ 3♥ 2♠ 6♠ 5♦").unwrap().is_straight());
+        assert!(Five::from_str("4♦ 3♠ 2♥ A♠ 5♠").unwrap().is_straight());
+        assert!(!Five::from_str("4♦ 3♠ 9♥ A♠ 5♠").unwrap().is_straight());
+        assert!(!Five::from_str("4♦ 3♠ 2♥ 8♠ 5♠").unwrap().is_straight());
+    }
+
+    #[test]
+    fn is_straight_flush() {
+        assert!(Five::from_str("A♠ K♠ Q♠ J♠ T♠").unwrap().is_straight_flush());
+        assert!(Five::from_str("9♠ K♠ Q♠ J♠ T♠").unwrap().is_straight_flush());
+        assert!(Five::from_str("9♠ 8♠ Q♠ J♠ T♠").unwrap().is_straight_flush());
+        assert!(Five::from_str("9♠ 8♠ 7♠ J♠ T♠").unwrap().is_straight_flush());
+        assert!(Five::from_str("9♠ 8♠ 7♠ 6♠ T♠").unwrap().is_straight_flush());
+        assert!(Five::from_str("9♠ 8♠ 7♠ 6♠ 5♠").unwrap().is_straight_flush());
+        assert!(Five::from_str("4♠ 8♠ 7♠ 6♠ 5♠").unwrap().is_straight_flush());
+        assert!(Five::from_str("4♠ 3♠ 7♠ 6♠ 5♠").unwrap().is_straight_flush());
+        assert!(Five::from_str("4♠ 3♠ 2♠ 6♠ 5♠").unwrap().is_straight_flush());
+        assert!(Five::from_str("4♠ 3♠ 2♠ A♠ 5♠").unwrap().is_straight_flush());
+        assert!(!Five::from_str("4♠ 3♥ 2♠ A♠ 5♠").unwrap().is_straight_flush());
+        assert!(!Five::from_str("4♠ 3♠ 2♠ A♠ 5♥").unwrap().is_straight_flush());
+    }
+
+    #[test]
+    fn is_wheel() {
+        assert!(Five::from_str("4♠ 3♠ 2♠ A♠ 5♥").unwrap().is_wheel());
+        assert!(!Five::from_str("4♠ 3♠ 9♠ A♠ 5♥").unwrap().is_wheel());
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn and_bits() {
+        let hand = Five::from_str("A♠ K♠ Q♠ J♠ T♠").unwrap();
+
+        let and_bits = hand.and_bits();
+
+        assert_eq!(
+            "00010000000000001000110000101001",
+            format!("{:032b}", hand.first().as_u32())
+        );
+        assert_eq!(
+            "00001000000000001000101100100101",
+            format!("{:032b}", hand.second().as_u32())
+        );
+        assert_eq!(
+            "00000100000000001000101000011111",
+            format!("{:032b}", hand.third().as_u32())
+        );
+        assert_eq!(
+            "00000010000000001000100100011101",
+            format!("{:032b}", hand.forth().as_u32())
+        );
+        assert_eq!(
+            "00000001000000001000100000010111",
+            format!("{:032b}", hand.fifth().as_u32())
+        );
+        assert_eq!("00000000000000001000100000000001", format!("{and_bits:032b}"));
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn display() {
+        assert_eq!("A♦ K♦ Q♦ J♦ T♦", Five(ROYAL_FLUSH).to_string());
+    }
+
+    /// Task 8 Step 2e: `Display` was rewritten to join the five cards directly rather than
+    /// route through pkcore's `Cards`. This pins the rendering of the canonical hand.
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn display__royal_flush_in_spades() {
+        let royal = Five::from([
+            Card::ACE_SPADES,
+            Card::KING_SPADES,
+            Card::QUEEN_SPADES,
+            Card::JACK_SPADES,
+            Card::TEN_SPADES,
+        ]);
+
+        assert_eq!("A♠ K♠ Q♠ J♠ T♠", royal.to_string());
+    }
+
+    /// Regression pin for the Task 8 review's IMPORTANT finding. The original Step 2e
+    /// rewrite formatted all five raw slots, rendering `Five::default()` as
+    /// `"__ __ __ __ __"`. pkcore routes `Display` through `Pile::cards()`, whose
+    /// `Cards(IndexSet<Card>)` drops blanks first, so the correct output is empty.
+    ///
+    /// This is a reachable public-API path, not a corner case:
+    /// `hand_rank_value_and_hand()` returns `Five::default()` for every invalid hand.
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn display__blank_hand_renders_empty_like_pkcore() {
+        assert_eq!("", Five::default().to_string());
+        assert_eq!("", Five::from([Card::BLANK; 5]).to_string());
+    }
+
+    /// `Cards` is an `IndexSet`, so pkcore collapses a repeated card to its first
+    /// occurrence and drops blanks wherever they sit. Both are reproduced.
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn display__collapses_duplicates_and_drops_blanks_like_pkcore() {
+        let dupes = Five::from([
+            Card::ACE_SPADES,
+            Card::KING_SPADES,
+            Card::ACE_SPADES,
+            Card::BLANK,
+            Card::QUEEN_SPADES,
+        ]);
+
+        assert_eq!("A♠ K♠ Q♠", dupes.to_string());
+    }
+
+    /// A blank in the leading slot must not emit a leading separator.
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn display__leading_blank_does_not_emit_a_leading_space() {
+        let hand = Five::from([
+            Card::BLANK,
+            Card::ACE_SPADES,
+            Card::KING_SPADES,
+            Card::QUEEN_SPADES,
+            Card::JACK_SPADES,
+        ]);
+
+        assert_eq!("A♠ K♠ Q♠ J♠", hand.to_string());
+    }
+
+    #[test]
+    fn rank() {
+        assert_eq!(1, Five::from(ROYAL_FLUSH).hand_rank_value());
+        assert_eq!(1603, Five::from_str("J♣ T♣ 9♣ 8♠ 7♣").unwrap().hand_rank_value());
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn or_rank_bits() {
+        let or = Five::from_str("A♠ K♠ Q♠ J♠ T♠").unwrap().or_rank_bits();
+
+        assert_eq!("0001111100000000", format!("{or:016b}"));
+        assert_eq!("00000000000000000001111100000000", format!("{or:032b}"));
+        assert_eq!(8, or.trailing_zeros());
+        assert_eq!(19, or.leading_zeros());
+        assert_eq!(or, 7936);
+    }
+
+    #[test]
+    fn unique_rank() {
+        let ace_high_straight = Five::from_str("K♠ A♠ Q♥ T♠ J♠").unwrap().or_rank_bits() as usize;
+        let wheel_straight = Five::from_str("A♠ 5♠ 2♠ 4♠ 3♥").unwrap().or_rank_bits() as usize;
+
+        // Flushes rank between 1600 and 1609
+        assert_eq!(1600, Five::unique_rank(ace_high_straight));
+        assert_eq!(1609, Five::unique_rank(wheel_straight));
+    }
+
+    #[test]
+    fn from__array() {
+        assert_eq!(Five::from(ROYAL_FLUSH), Five(ROYAL_FLUSH));
+    }
+
+    /// pkcore asserted `PKError::InvalidCardIndex` / `NotEnoughCards` / `TooManyCards`;
+    /// the kernel's `CkcError` has no such variants, so those three map to
+    /// `InvalidIndex` / `Incomplete` / `InvalidCardCount`. Every input and every
+    /// success/failure verdict is pkcore's.
+    #[test]
+    fn from_str() {
+        assert_eq!(Five::from(ROYAL_FLUSH), Five::from_str("AD KD QD JD TD").unwrap());
+        assert!(Five::from_str("AD KD QD JD").is_err());
+        assert_eq!(CkcError::InvalidIndex, Five::from_str("").unwrap_err());
+        assert_eq!(CkcError::InvalidIndex, Five::from_str(" ").unwrap_err());
+        assert_eq!(CkcError::InvalidIndex, Five::from_str(" __ ").unwrap_err());
+        assert_eq!(CkcError::Incomplete, Five::from_str("AC").unwrap_err());
+        assert!(Five::from_str("AD KD QD JD TD 9D").is_err());
+        assert_eq!(
+            CkcError::InvalidCardCount,
+            Five::from_str("AD KD QD JD TD 9D").unwrap_err()
+        );
+    }
+
+    /// pkcore's `Cards::from_str` ran the input through `Terminal::index_cleaner`, which
+    /// turns `,` and `-` into spaces. The rewritten `FromStr` keeps that.
+    #[test]
+    fn from_str__comma_and_dash_separators() {
+        assert_eq!(Five::from(ROYAL_FLUSH), Five::from_str("AD,KD-QD, JD TD").unwrap());
+    }
+
+    /// pkcore collected into an `IndexSet`, so a repeated card collapsed and the hand then
+    /// failed the length check. Preserved.
+    #[test]
+    fn from_str__duplicates_collapse() {
+        assert_eq!(CkcError::Incomplete, Five::from_str("AD AD KD QD JD").unwrap_err());
+    }
+
+    #[rstest]
+    #[case("A♠ K♠ Q♠ J♠ T♠", 1)]
+    #[case("5♠ 4♠ 3♠ 2♠ A♠", 10)]
+    #[case("5♠ 4♠ 3♠ 2♥ A♠", 1609)]
+    #[case("9S 9H 9D 9C AH", 71)]
+    #[case("9C 8D 6C 5S 2D", 7422)]
+    fn hand_ranker__hand_rank_value(#[case] index: &'static str, #[case] expected_value: HandRankValue) {
+        let five = Five::from_str(index).unwrap();
+        assert_eq!(expected_value, five.hand_rank_value());
+    }
+
+    #[test]
+    fn hand_ranker__hand_rank_value__unknown() {
+        assert_eq!(0 as HandRankValue, Five::default().hand_rank_value());
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn hand_ranker__sort() {
+        assert_eq!(
+            "A♠ K♠ Q♠ J♠ T♠",
+            Five::from_str("K♠ A♠  Q♠  T♠ J♠").unwrap().sort().to_string()
+        );
+    }
+
+    /// The default sort for a `Five` is going to be based on pure `Card` values, which is
+    /// in turn from the CKC number of the `Card`. CKC numbers have the highest bits set to
+    /// `Rank` and the next set to `Suit`, so, since all three of the `Fives` in the vector
+    /// have the same `Rank`s, so, on a reverse sort, the straight is going to sort higher
+    /// than the heart royal flush simply because the straight has a K♠, while the heart flush
+    /// has a K♥.
+    ///
+    /// This is different than a `Case` sort because it has a `HandRank` first in its struct, before
+    /// the `Five` hand field, so in rust, a struct will by default always sort on the first field
+    /// in the struct, before it starts sorting on the next fields in order.
+    ///
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn hand_ranker__sort__vector_of_fives() {
+        let straight = Five::from_str("Q♠ A♥ T♠ K♠ J♠").unwrap().sort();
+        let royal_flush_spades = Five::from_str("Q♠ A♠ T♠ K♠ J♠").unwrap().sort();
+        let royal_flush_hearts = Five::from_str("Q♥ J♥ A♥ T♥ K♥").unwrap().sort();
+        let mut v = vec![straight, royal_flush_spades, royal_flush_hearts];
+        let expected = vec![royal_flush_spades, straight, royal_flush_hearts];
+
+        v.sort();
+        v.reverse();
+
+        assert_eq!(expected, v);
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn hand_ranker__sort__pair() {
+        assert_eq!(
+            "9♠ 9♥ K♠ Q♠ T♠",
+            Five::from_str("K♠ 9♠ 9♥ T♠ Q♠").unwrap().sort().to_string()
+        );
+        assert_eq!(
+            "J♠ J♥ K♠ Q♠ T♠",
+            Five::from_str("K♠ J♠ J♥ T♠ Q♠").unwrap().sort().to_string()
+        );
+        assert_eq!(
+            "A♠ A♥ K♠ Q♠ T♠",
+            Five::from_str("K♠ A♠ A♥ T♠ Q♠").unwrap().sort().to_string()
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn hand_ranker__sort__trips() {
+        assert_eq!(
+            "9♠ 9♥ 9♦ K♠ T♠",
+            Five::from_str("T♠ 9♦ 9♥ K♠ 9♠").unwrap().sort().to_string()
+        );
+        assert_eq!(
+            "J♠ J♥ J♦ Q♠ T♠",
+            Five::from_str("J♦ J♥ T♠ J♠ Q♠").unwrap().sort().to_string()
+        );
+        assert_eq!(
+            "A♠ A♥ A♣ K♠ T♠",
+            Five::from_str("T♠ A♣ A♥ K♠ A♠").unwrap().sort().to_string()
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn hand_ranker__sort__full_house() {
+        assert_eq!(
+            "9♠ 9♥ 9♦ T♠ T♣",
+            Five::from_str("T♣ 9♦ 9♥ T♠ 9♠").unwrap().sort().to_string()
+        );
+        assert_eq!(
+            "J♠ J♥ J♦ T♠ T♦",
+            Five::from_str("J♦ J♥ T♦ J♠ T♠").unwrap().sort().to_string()
+        );
+        assert_eq!(
+            "A♠ A♥ A♣ T♠ T♥",
+            Five::from_str("T♥ A♣ A♥ T♠ A♠").unwrap().sort().to_string()
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn hand_ranker__sort__quads() {
+        assert_eq!(
+            "9♠ 9♥ 9♦ 9♣ T♠",
+            Five::from_str("T♠ 9♦ 9♥ 9♣ 9♠").unwrap().sort().to_string()
+        );
+        assert_eq!(
+            "J♠ J♥ J♦ J♣ Q♣",
+            Five::from_str("J♦ J♥ J♣ J♠ Q♣").unwrap().sort().to_string()
+        );
+        assert_eq!(
+            "A♠ A♥ A♦ A♣ T♠",
+            Five::from_str("T♠ A♣ A♥ A♦ A♠").unwrap().sort().to_string()
+        );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn hand_ranker__sort__wheel() {
+        assert_eq!(
+            "5♠ 4♠ 3♠ 2♠ A♠",
+            Five::from_str("A♠ 5♠ 4♠ 3♠ 2♠").unwrap().sort().to_string()
+        );
+    }
+
+    #[test]
+    fn hand_ranker__hand_rank__default() {
+        assert_eq!(0, Five::default().hand_rank().value);
+    }
+
+    //region Brute Force HandRank tests
     #[rustfmt::skip]
     #[rstest]
     #[case("A♠ K♠ Q♠ J♠ T♠", 1, HandRankName::StraightFlush, HandRankClass::RoyalFlush)]
@@ -2049,6 +2602,9 @@ mod cards__five_tests {
     #[case("9C 8D 7C 6S 3D", 7412, HandRankName::HighCard, HandRankClass::NineHigh)]
     #[case("9C 8D 7C 6S 2D", 7413, HandRankName::HighCard, HandRankClass::NineHigh)]
     #[case("9C 8D 7C 5S 4D", 7414, HandRankName::HighCard, HandRankClass::NineHigh)]
+    #[case("9C 8D 7C 5S 3D", 7415, HandRankName::HighCard, HandRankClass::NineHigh)]
+    #[case("9C 8D 7C 5S 2D", 7416, HandRankName::HighCard, HandRankClass::NineHigh)]
+    #[case("9C 8D 6C 5S 2D", 7422, HandRankName::HighCard, HandRankClass::NineHigh)]
     #[case("9D 5D 4♥ 3D 2D", 7444, HandRankName::HighCard, HandRankClass::NineHigh)]
     #[case("8D 7C 6S 5D 3H", 7445, HandRankName::HighCard, HandRankClass::EightHigh)]
     #[case("8D 7C 6S 5D 2H", 7446, HandRankName::HighCard, HandRankClass::EightHigh)]
@@ -2061,252 +2617,293 @@ mod cards__five_tests {
     #[case("7D 6D 5♥ 3D 2D", 7460, HandRankName::HighCard, HandRankClass::SevenHigh)]
     #[case("7D 6D 4♥ 3D 2D", 7461, HandRankName::HighCard, HandRankClass::SevenHigh)]
     #[case("7D 5D 4♥ 3D 2D", 7462, HandRankName::HighCard, HandRankClass::SevenHigh)]
-    #[case("A♠ A♠ Q♠ J♠ T♠", 0, HandRankName::Invalid, HandRankClass::Invalid)]
-    fn hand_rank_value(
+    fn hand_ranker__hand_rank(
         #[case] index: &'static str,
         #[case] expected_value: HandRankValue,
         #[case] expected_name: HandRankName,
         #[case] expected_class: HandRankClass,
     ) {
-        let hand = Five::try_from(index).unwrap();
+        let hand = Five::from_str(index).unwrap();
 
-        // let hand_rank_value = hand.hand_rank_value();
-        let hand_rank = hand.hand_rank();
+        let (hand_rank, five) = hand.hand_rank_and_hand();
 
+        // Task 11 Step 2d flagged the next line: `hand.sort().clean()` is
+        // character-for-character the expression `hand_rank_value_and_hand` returns
+        // (five.rs:323), so the test recomputes the implementation and compares it to
+        // itself. It is not empty — it pins the delegation, and catches a change to
+        // *which* five is returned (unsorted, unclean, defaulted) — but it is blind in
+        // one direction: a bug inside `sort()` or `clean()` corrupts both sides
+        // identically and stays green. Kept for what it does cover.
+        assert_eq!(hand.sort().clean(), five);
+
+        // Added as the independently-grounded companion: the five cards handed back must
+        // actually be worth the rank claimed for them. `expected_value` is a hand-written
+        // literal ported from pkcore and pinned for every C(52,5) hand by the golden
+        // oracle, so this side does not derive from `sort`/`clean` at all.
+        assert_eq!(expected_value, five.hand_rank_value(), "returned hand must earn the claimed rank");
         assert_eq!(expected_value, hand_rank.value);
         assert_eq!(expected_name, hand_rank.name);
         assert_eq!(expected_class, hand_rank.class);
     }
 
-    use rstest::rstest;
+    //endregion
 
     #[test]
-    fn new() {
-        let five = Five::new(
-            CardNumber::ACE_SPADES,
-            CardNumber::KING_SPADES,
-            CardNumber::QUEEN_SPADES,
-            CardNumber::JACK_SPADES,
-            CardNumber::TEN_SPADES,
-        );
-        assert_eq!(five.hand_rank_value(), 1);
-    }
-
-    #[test]
-    fn hand_rank_value__royal_flush() {
-        assert_eq!(1, Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().hand_rank_value());
-    }
-
-    #[test]
-    fn and_bits() {
-        let hand = Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap();
-
-        let and_bits = hand.and_bits();
-
-        assert_eq!(CardNumber::ACE_SPADES, hand.first());
-        assert_eq!(CardNumber::KING_SPADES, hand.second());
-        assert_eq!(CardNumber::QUEEN_SPADES, hand.third());
-        assert_eq!(CardNumber::JACK_SPADES, hand.forth());
-        assert_eq!(CardNumber::TEN_SPADES, hand.fifth());
-        assert_eq!("00010000000000001000110000101001", format!("{:032b}", hand.first()));
-        assert_eq!("00001000000000001000101100100101", format!("{:032b}", hand.second()));
-        assert_eq!("00000100000000001000101000011111", format!("{:032b}", hand.third()));
-        assert_eq!("00000010000000001000100100011101", format!("{:032b}", hand.forth()));
-        assert_eq!("00000001000000001000100000010111", format!("{:032b}", hand.fifth()));
-        assert_eq!("00000000000000001000100000000001", format!("{:032b}", and_bits));
-    }
-
-    #[test]
-    fn is_flush() {
-        assert!(Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().is_flush());
-        assert!(!Five::try_from("A♠ K♥ Q♠ J♠ T♠").unwrap().is_flush());
-    }
-
-    #[test]
-    fn is_straight() {
-        assert!(Five::try_from("A♠ K♥ Q♠ J♠ T♠").unwrap().is_straight());
-        assert!(Five::try_from("K♥ Q♥ J♥ T♥ 9♠").unwrap().is_straight());
-        assert!(Five::try_from("Q♥ J♥ T♥ 9♠ 8C").unwrap().is_straight());
-        assert!(Five::try_from("J♠ T♥ 9♠ 8♠ 7C").unwrap().is_straight());
-        assert!(Five::try_from("T♥ 9♠ 8♠ 7C 6S").unwrap().is_straight());
-        assert!(Five::try_from("9♠ 8♠ 7C 6S 5♥").unwrap().is_straight());
-        assert!(Five::try_from("8♠ 7C 6S 5♥ 4D").unwrap().is_straight());
-        assert!(Five::try_from("7C 6S 5♥ 4D 3C").unwrap().is_straight());
-        assert!(Five::try_from("6S 5♥ 4D 3C 2H").unwrap().is_straight());
-        assert!(Five::try_from("5♥ 4D 3C 2H AS").unwrap().is_straight());
-    }
-
-    #[test]
-    fn is_straight__false() {
-        assert!(!Five::try_from("6♥ 4D 3C 2H AS").unwrap().is_straight());
-        assert!(!Five::try_from("K♥ Q♥ J♥ T♥ 8D").unwrap().is_straight());
-    }
-
-    #[test]
-    fn is_straight_flush() {
-        assert!(Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().is_straight_flush());
-        assert!(Five::try_from("K♠ Q♠ J♠ T♠ 9♠").unwrap().is_straight_flush());
-    }
-
-    #[test]
-    fn is_straight_false() {
-        assert!(!Five::try_from("A♠ K♥ Q♠ J♠ T♠").unwrap().is_straight_flush());
-    }
-
-    #[test]
-    fn is_wheel() {
-        let wheel = Five::try_from("5♥ 4D 3C 2H A♠").unwrap();
-
-        assert_eq!("0001000000001111", format!("{:016b}", wheel.or_rank_bits()));
-        assert_eq!(Five::WHEEL_OR_BITS, wheel.or_rank_bits());
-        assert!(wheel.is_wheel());
-        assert!(!Five::try_from("7♥ 4D 3C 2H AS").unwrap().is_wheel());
-    }
-
-    #[test]
-    fn or_rank_bits() {
-        let or = Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap().or_rank_bits();
-
-        assert_eq!("0001111100000000", format!("{:016b}", or));
-        assert_eq!("00000000000000000001111100000000", format!("{:032b}", or));
-        assert_eq!(8, or.trailing_zeros());
-        assert_eq!(19, or.leading_zeros());
-        assert_eq!(or, 7936);
-    }
-
-    #[test]
-    fn sort() {
-        let five = Five::try_from("KC QD A♠ 9h T♠").unwrap().sort();
-
-        let expected = Five::try_from("A♠ KC QD T♠ 9h").unwrap();
-
-        assert_eq!(five, expected);
-    }
-
-    #[test]
-    fn default() {
-        let five = Five::default();
-
-        assert_eq!(five.first(), CardNumber::BLANK);
-        assert_eq!(five.second(), CardNumber::BLANK);
-        assert_eq!(five.third(), CardNumber::BLANK);
-        assert_eq!(five.forth(), CardNumber::BLANK);
-        assert_eq!(five.fifth(), CardNumber::BLANK);
-        assert!(five.contain_blank());
-        assert!(!five.are_unique());
-        assert!(!five.is_valid());
-    }
-
-    #[test]
-    fn hand_validator__is_corrupt() {
-        let first = Five::from([
-            CardNumber::JACK_CLUBS,
-            CardNumber::DEUCE_CLUBS,
-            23,
-            CardNumber::KING_SPADES,
-            CardNumber::TEN_SPADES,
+    fn pile__clean() {
+        let full_house = Five::from([
+            Card::FIVE_SPADES,
+            Card::SIX_DIAMONDS,
+            Card::FIVE_HEARTS,
+            Card::SIX_SPADES,
+            Card::SIX_CLUBS,
         ]);
-        let second = Five::from([
-            CardNumber::JACK_CLUBS,
-            CardNumber::QUEEN_DIAMONDS,
-            CardNumber::TREY_CLUBS,
-            CardNumber::KING_SPADES,
-            CardNumber::BLANK,
+        let full_house_sorted = Five::from([
+            Card::SIX_SPADES,
+            Card::SIX_DIAMONDS,
+            Card::SIX_CLUBS,
+            Card::FIVE_SPADES,
+            Card::FIVE_HEARTS,
         ]);
 
-        assert!(first.is_corrupt());
-        assert!(second.is_corrupt());
+        let clean_full_house = full_house.sort().clean();
+
+        assert_eq!(full_house_sorted, clean_full_house);
     }
 
+    /// pkcore's equivalents went through `Cards`; the kernel's `TryFrom<Vec<Card>>` applies
+    /// the same blank-filtering, de-duplicating, exactly-five rule directly.
+    #[cfg(feature = "alloc")]
     #[test]
-    fn hand_validator__are_unique() {
-        let first = Five::from([
-            CardNumber::JACK_CLUBS,
-            CardNumber::TREY_CLUBS,
-            CardNumber::DEUCE_CLUBS,
-            CardNumber::KING_SPADES,
-            CardNumber::TEN_SPADES,
-        ]);
-        let second = Five::from([
-            CardNumber::JACK_CLUBS,
-            CardNumber::QUEEN_DIAMONDS,
-            CardNumber::TREY_CLUBS,
-            CardNumber::KING_SPADES,
-            CardNumber::ACE_HEARTS,
-        ]);
-        let third = Five::try_from("A♠ K♠ Q♠ J♠ T♠").unwrap();
-
-        assert!(first.are_unique());
-        assert!(second.are_unique());
-        assert!(third.are_unique());
-    }
-
-    #[test]
-    fn hand_validator__are_unique__false() {
-        let first = Five::from([
-            CardNumber::JACK_CLUBS,
-            CardNumber::DEUCE_CLUBS,
-            CardNumber::DEUCE_CLUBS,
-            CardNumber::KING_SPADES,
-            CardNumber::TEN_SPADES,
-        ]);
-        let second = Five::from([
-            CardNumber::JACK_CLUBS,
-            CardNumber::QUEEN_DIAMONDS,
-            CardNumber::TREY_CLUBS,
-            CardNumber::KING_SPADES,
-            CardNumber::KING_SPADES,
-        ]);
-        let third = Five::try_from("A♠ A♠ Q♠ J♠ T♠").unwrap();
-
-        assert!(!first.are_unique());
-        assert!(!second.are_unique());
-        assert!(!third.are_unique());
-    }
-
-    #[test]
-    fn try_from__index() {
-        let five = Five::try_from("A♠ K♠ Q♠ J♠ T♠");
-
-        assert!(five.is_ok());
-        let five = five.unwrap();
-        assert_eq!(five.first(), CardNumber::ACE_SPADES);
-        assert_eq!(five.second(), CardNumber::KING_SPADES);
-        assert_eq!(five.third(), CardNumber::QUEEN_SPADES);
-        assert_eq!(five.forth(), CardNumber::JACK_SPADES);
-        assert_eq!(five.fifth(), CardNumber::TEN_SPADES);
-        assert!(!five.contain_blank());
-        assert!(five.are_unique());
-        assert!(five.is_valid());
-    }
-
-    #[test]
-    fn try_from__index__blank() {
-        let five = Five::try_from("A♠ K♠ XX J♠ T♠");
-
-        assert!(five.is_ok());
-        let five = five.unwrap();
-        assert_eq!(five.first(), CardNumber::ACE_SPADES);
-        assert_eq!(five.second(), CardNumber::KING_SPADES);
-        assert_eq!(five.third(), CardNumber::BLANK);
-        assert_eq!(five.forth(), CardNumber::JACK_SPADES);
-        assert_eq!(five.fifth(), CardNumber::TEN_SPADES);
-        assert!(five.contain_blank());
-        assert!(!five.is_valid());
-    }
-
-    #[test]
-    fn try_from__index__too_short() {
-        let five = Five::try_from("A♠ K♠ Q♠ J♠");
-
-        assert!(five.is_err());
-    }
-
-    #[test]
-    fn shifty__shift_suit() {
+    fn try_from__vec() {
+        assert_eq!(Five::try_from(ROYAL_FLUSH.to_vec()).unwrap(), Five(ROYAL_FLUSH));
         assert_eq!(
-            Five::try_from("4♥ 4D 2S 2C A♥").unwrap().shift_suit(),
-            Five::try_from("4D 4C 2H 2S AD").unwrap()
-        )
+            Five::try_from(ROYAL_FLUSH.iter().collect::<Vec<&Card>>()).unwrap(),
+            Five(ROYAL_FLUSH)
+        );
+        assert_eq!(Five::try_from(&ROYAL_FLUSH.to_vec()).unwrap(), Five(ROYAL_FLUSH));
     }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn try_from__vec__not_enough() {
+        let sut = Five::try_from(vec![
+            Card::ACE_DIAMONDS,
+            Card::KING_DIAMONDS,
+            Card::QUEEN_DIAMONDS,
+            Card::JACK_DIAMONDS,
+        ]);
+
+        assert!(sut.is_err());
+        assert_eq!(sut.unwrap_err(), CkcError::Incomplete);
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn try_from__vec__too_many() {
+        let sut = Five::try_from(vec![
+            Card::ACE_DIAMONDS,
+            Card::KING_DIAMONDS,
+            Card::QUEEN_DIAMONDS,
+            Card::JACK_DIAMONDS,
+            Card::TEN_DIAMONDS,
+            Card::NINE_DIAMONDS,
+        ]);
+
+        assert!(sut.is_err());
+        assert_eq!(sut.unwrap_err(), CkcError::InvalidCardCount);
+    }
+
+    /// pkcore's `Cards::from(Vec<Card>)` dropped blanks and de-duplicated on the way in.
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn try_from__vec__filters_blanks_and_duplicates() {
+        let mut v = ROYAL_FLUSH.to_vec();
+        v.push(Card::BLANK);
+        v.push(Card::ACE_DIAMONDS);
+
+        assert_eq!(Five::try_from(v).unwrap(), Five(ROYAL_FLUSH));
+    }
+
+    // Weightest tests
+
+    // The five `weighted__*` tests are pkcore's, with `Five::try_from(five.cards().shuffle())`
+    // replaced by a fixed scramble of the same five cards: `Cards` does not follow the kernel
+    // down, and `shuffle()` needs an RNG the kernel does not have. The point of the tests is
+    // that `sort()` reorders by rank multiplicity regardless of input order, so a fixed
+    // non-sorted permutation exercises exactly the same path. Expected strings are pkcore's,
+    // unchanged.
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn weighted__pair() {
+        let hand = Five::from_str("6♠ 2♦ 3♠ 7♣ 2♠").unwrap().sort();
+
+        assert_eq!(hand.to_string(), "2♠ 2♦ 7♣ 6♠ 3♠");
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn weighted__two_pair() {
+        let hand = Five::from_str("3♠ 7♣ 2♠ 7♠ 2♦").unwrap().sort();
+
+        assert_eq!(hand.to_string(), "7♠ 7♣ 2♠ 2♦ 3♠");
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn weighted__trips() {
+        let hand = Five::from_str("6♠ 2♣ 3♠ 2♠ 2♦").unwrap().sort();
+
+        assert_eq!(hand.to_string(), "2♠ 2♦ 2♣ 6♠ 3♠");
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn weighted__full() {
+        let hand = Five::from_str("6♦ 2♦ 6♠ 2♣ 2♠").unwrap().sort();
+
+        assert_eq!(hand.to_string(), "2♠ 2♦ 2♣ 6♠ 6♦");
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn weighted__quads() {
+        let hand = Five::from_str("2♥ 6♦ 2♣ 2♠ 2♦").unwrap().sort();
+
+        assert_eq!(hand.to_string(), "2♠ 2♥ 2♦ 2♣ 6♦");
+    }
+
+    //region Task 8 additions
+
+    /// `HandValidator` is new in the kernel (pkcore got `are_unique` from `Pile`), and
+    /// `hand_rank_value` now guards on `is_valid()` rather than `is_dealt()`.
+    #[test]
+    fn hand_validator() {
+        let royal = Five::from(ROYAL_FLUSH);
+
+        assert!(royal.are_unique());
+        assert!(!royal.contains_blank());
+        assert!(!royal.is_corrupt());
+        assert!(royal.is_valid());
+        assert_eq!(Card::ACE_DIAMONDS, HandValidator::first(&royal));
+        assert_eq!(5, HandValidator::iter(&royal).count());
+    }
+
+    #[test]
+    fn hand_validator__duplicate_is_not_unique() {
+        let paired = Five::from([
+            Card::ACE_DIAMONDS,
+            Card::ACE_DIAMONDS,
+            Card::QUEEN_DIAMONDS,
+            Card::JACK_DIAMONDS,
+            Card::TEN_DIAMONDS,
+        ]);
+
+        assert!(!paired.are_unique());
+        assert!(!paired.is_valid());
+        assert_eq!(NO_HAND_RANK_VALUE, paired.hand_rank_value());
+    }
+
+    /// `Card::BLANK` is not a recognized `CardNumber`, so `is_corrupt` subsumes the blank case.
+    #[test]
+    fn hand_validator__blank_is_corrupt() {
+        let blanked = Five::from([
+            Card::BLANK,
+            Card::KING_DIAMONDS,
+            Card::QUEEN_DIAMONDS,
+            Card::JACK_DIAMONDS,
+            Card::TEN_DIAMONDS,
+        ]);
+
+        assert!(blanked.contains_blank());
+        assert!(blanked.is_corrupt());
+        assert!(!blanked.is_valid());
+        assert_eq!(NO_HAND_RANK_VALUE, blanked.hand_rank_value());
+    }
+
+    #[test]
+    fn clean() {
+        let flagged = Five::from(ROYAL_FLUSH).frequency_weighted();
+        let paired = Five::from([
+            Card::ACE_DIAMONDS.frequency_paired(),
+            Card::KING_DIAMONDS.frequency_tripped(),
+            Card::QUEEN_DIAMONDS.frequency_quaded(),
+            Card::JACK_DIAMONDS,
+            Card::TEN_DIAMONDS,
+        ]);
+
+        assert_eq!(Five(ROYAL_FLUSH), flagged.clean());
+        assert_eq!(Five(ROYAL_FLUSH), paired.clean());
+    }
+
+    /// `Five::eval` is the crate's headline entry point; it must agree with the
+    /// `HandRanker` method it wraps.
+    #[test]
+    fn eval() {
+        assert_eq!(1, Five::eval(ROYAL_FLUSH));
+        assert_eq!(Five::from(ROYAL_FLUSH).hand_rank_value(), Five::eval(ROYAL_FLUSH));
+        assert_eq!(NO_HAND_RANK_VALUE, Five::eval([Card::BLANK; 5]));
+    }
+
+    //endregion
+
+    //region Task 10 additions
+
+    /// A `Card` whose bits are neither a real `CardNumber` nor `BLANK`, built the direct
+    /// way: `Card::from(23)` sanitizes to `BLANK`, and the tuple field is `pub(crate)`, so
+    /// this particular construction is in-crate only.
+    ///
+    /// It is **not** the only route. Every *constructor* sanitizes, but
+    /// [`Card::frequency_paired`] and its siblings are public *transformations* that set
+    /// bits 29..=31 on an already-valid card, which no `CardNumber` sets — so a caller
+    /// outside the crate can reach a corrupt `Card` too. See
+    /// `tests/invalid_hands.rs::frequency_flagged_cards_are_corrupt_through_public_api`,
+    /// which pins that path. This test keeps the in-crate route covered because it is the
+    /// cheaper one to reason about, not because it is the only one.
+    ///
+    /// Why 23 is not a card, argued from the bit layout rather than from the validator:
+    /// every `CardNumber` sets exactly one bit of the suit nibble (`SUIT_FLAG_FILTER`,
+    /// bits 12..=15) and exactly one bit of the rank field (`RANK_FLAG_FILTER`,
+    /// bits 16..=28). `23 == 0b10111` sets neither.
+    #[test]
+    fn is_corrupt_rejects_a_non_cardnumber_hand() {
+        let corrupt = Card(23); // not blank, not a duplicate, not a CardNumber
+        assert_ne!(Card::BLANK, corrupt);
+        assert_eq!(0, corrupt.as_u32() & (Card::SUIT_FLAG_FILTER | Card::RANK_FLAG_FILTER));
+
+        let hand = Five::from([
+            Card::JACK_CLUBS,
+            Card::DEUCE_CLUBS,
+            corrupt,
+            Card::KING_SPADES,
+            Card::TEN_SPADES,
+        ]);
+
+        // The distinguishing property: unique and non-blank, yet still invalid.
+        assert!(hand.are_unique());
+        assert!(!hand.contains_blank());
+        assert!(hand.is_corrupt());
+        assert!(!hand.is_valid());
+
+        assert_eq!(NO_HAND_RANK_VALUE, hand.hand_rank_value());
+    }
+
+    /// The corresponding negative: `is_dealt`-shaped logic would have accepted that hand.
+    /// This is the difference `is_valid` actually makes, stated as a test rather than a
+    /// claim in a design doc.
+    #[test]
+    fn a_corrupt_hand_passes_the_weaker_is_dealt_style_check() {
+        let hand = Five::from([
+            Card::JACK_CLUBS,
+            Card::DEUCE_CLUBS,
+            Card(23),
+            Card::KING_SPADES,
+            Card::TEN_SPADES,
+        ]);
+
+        assert!(hand.are_unique() && !hand.contains_blank()); // pkcore's is_dealt: passes
+        assert!(!hand.is_valid()); // ours: rejects
+    }
+
+    //endregion
 }
