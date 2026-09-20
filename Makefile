@@ -1,0 +1,278 @@
+.PHONY: default help clean build test ci ci-fresh nextest build_test fmt clippy \
+	clippy-pedantic semver actionlint create_docs docs ayce \
+	test-nightly clippy-nightly nightly unused-deps \
+	tree tree-duplicates deny audit \
+	install-tools watch install-watch mutants mutants-diff coverage coverage-open \
+	lookups
+
+# Default target
+default: ayce
+
+# Display help information
+help:
+	@echo "Available targets:"
+	@echo "  make (default)       - Run ayce"
+	@echo "  make build           - Build the project"
+	@echo "  make clean           - Clean build artifacts"
+	@echo "  make test            - Run tests"
+	@echo "  make ci              - Mirror GitHub Actions test job (RUSTFLAGS=-Dwarnings)"
+	@echo "  make ci-fresh        - Like ci, but 'cargo update' first to match CI's fresh deps"
+	@echo "  make nextest         - Run tests with cargo-nextest (installs if missing)"
+	@echo "  make build_test      - Clean, build, nextest, and doc tests"
+	@echo "  make fmt             - Format code"
+	@echo "  make clippy          - Run clippy linter"
+	@echo "  make clippy-pedantic - Run clippy exactly as CI does (-Dclippy::pedantic)"
+	@echo "  make semver          - Check for semver-breaking API changes"
+	@echo "  make actionlint      - Lint GitHub Actions workflow files"
+	@echo "  make create_docs     - Build documentation"
+	@echo "  make docs            - Build docs and open in browser"
+	@echo "  make ayce            - Run fmt, actionlint, build_test, clippy-pedantic, and docs"
+	@echo "  make help            - Display this help message"
+	@echo ""
+	@echo "Nightly:"
+	@echo "  make test-nightly    - Run all tests with nightly"
+	@echo "  make clippy-nightly  - Run clippy with nightly and deny warnings"
+	@echo "  make nightly         - Run nightly test and clippy checks"
+	@echo "  make unused-deps     - Find unused dependencies with cargo-udeps"
+	@echo ""
+	@echo "Dependencies and Security:"
+	@echo "  make tree            - Show dependency tree"
+	@echo "  make tree-duplicates - Show duplicate dependencies"
+	@echo "  make deny            - Run full cargo-deny checks"
+	@echo "  make audit           - Run advisory-only security audit"
+	@echo ""
+	@echo "Generators:"
+	@echo "  make lookups         - Run the gen_lookups example"
+	@echo ""
+	@echo "Tools and Workflow:"
+	@echo "  make install-tools   - Install cargo-deny, cargo-udeps, cargo-mutants, and cargo-llvm-cov"
+	@echo "  make watch           - Run cargo-watch for check/test loop"
+	@echo "  make install-watch   - Install cargo-watch"
+	@echo "  make mutants         - Run cargo-mutants on the whole codebase (slow)"
+	@echo "  make mutants-diff    - Run cargo-mutants only on files changed vs main"
+	@echo "  make coverage        - Generate HTML code coverage report"
+	@echo "  make coverage-open   - Generate HTML coverage report and open in browser"
+	@echo ""
+
+# Clean build artifacts
+clean:
+	cargo clean
+
+# Build the project
+build:
+	cargo build
+
+# Run tests
+test:
+	cargo test --all
+
+# Mirror the GitHub Actions test job exactly: warnings are hard errors and
+# incremental compilation is off. Uses the CURRENT Cargo.lock.
+ci:
+	RUSTFLAGS="-Dwarnings" CARGO_INCREMENTAL=0 cargo test --all
+
+# Like `ci`, but first re-resolves dependencies to the latest compatible
+# versions. CI resolves fresh on every run (Cargo.lock is excluded from the
+# published crate and not used by the workflow), so this is what catches
+# breakage from newer deps before it reaches GitHub.
+ci-fresh:
+	cargo update
+	RUSTFLAGS="-Dwarnings" CARGO_INCREMENTAL=0 cargo test --all
+
+# Run tests with cargo-nextest (installs if not present)
+nextest:
+	@if ! cargo nextest --version >/dev/null 2>&1; then \
+		echo "cargo-nextest is not installed."; \
+		printf "Would you like to install it now? [y/N] "; \
+		read answer; \
+		if [ "$$answer" = "y" ] || [ "$$answer" = "Y" ]; then \
+			cargo install --locked cargo-nextest; \
+		else \
+			echo "Skipping. Run 'cargo install cargo-nextest' to install manually."; \
+			exit 1; \
+		fi; \
+	fi
+	cargo nextest run --all
+
+# Clean once, then build, run nextest, and run doc tests.
+# nextest does not run doc tests, so they get their own invocation.
+build_test: clean build nextest
+	cargo test --doc
+
+# Format code
+fmt:
+	cargo fmt --all
+
+# Run clippy linter
+clippy:
+	cargo clippy --all-targets
+
+# Exactly what the CI clippy job runs. Pedantic is not the default locally,
+# so `make clippy` can pass while GitHub fails; this is the gate that matters.
+clippy-pedantic:
+	cargo clippy -- -Dclippy::all -Dclippy::pedantic
+
+# Check the public API for semver-breaking changes, like the CI clippy job.
+# Not a cargo default — installs on first use.
+semver:
+	@if ! cargo semver-checks --version >/dev/null 2>&1; then \
+		echo "cargo-semver-checks is not installed."; \
+		printf "Would you like to install it now? [y/N] "; \
+		read answer; \
+		if [ "$$answer" = "y" ] || [ "$$answer" = "Y" ]; then \
+			cargo install --locked cargo-semver-checks; \
+		else \
+			echo "Skipping. Run 'cargo install cargo-semver-checks' to install manually."; \
+			exit 1; \
+		fi; \
+	fi
+	cargo semver-checks check-release
+
+test-nightly:
+	cargo +nightly test --all-targets
+
+clippy-nightly:
+	cargo +nightly clippy --lib -- -D warnings
+
+nightly: test-nightly clippy-nightly
+
+# Show dependency tree
+tree:
+	@echo "Showing dependency tree..."
+	cargo tree
+
+# Show duplicate dependencies
+tree-duplicates:
+	@echo "Showing duplicate dependencies..."
+	cargo tree --duplicates
+
+# Security checks with cargo-deny
+deny:
+	@echo "Running cargo-deny checks..."
+	cargo deny check
+
+# Security audit with cargo-deny (advisories only) — mirrors .github/workflows/audit.yml
+audit:
+	@echo "Running security audit..."
+	cargo deny check advisories
+
+# Check for unused dependencies (requires nightly)
+unused-deps:
+	@echo "Checking for unused dependencies..."
+	cargo +nightly udeps --all-targets
+
+# Regenerate the lookup tables from examples/gen_lookups.rs
+lookups:
+	cargo run --release --example gen_lookups
+
+# Create documentation
+create_docs:
+	cargo doc --no-deps
+
+# Open documentation in browser
+docs: create_docs
+	@DOC_PATH="./target/doc/ckc_rs/index.html"; \
+	if command -v xdg-open >/dev/null 2>&1; then \
+		xdg-open "$$DOC_PATH"; \
+	elif command -v open >/dev/null 2>&1; then \
+		open "$$DOC_PATH"; \
+	else \
+		echo "No supported opener found (tried xdg-open and open)."; \
+		echo "Open $$DOC_PATH manually."; \
+		exit 1; \
+	fi
+
+# Lint GitHub Actions workflow files (auto-discovers .github/workflows/).
+# Not a cargo tool — install with `brew install actionlint`, or see
+# https://github.com/rhysd/actionlint#installation for other options.
+# Missing tool = skip with a warning so `make ayce` works on machines without
+# it; an actual lint failure still fails the build.
+actionlint:
+	@if command -v actionlint >/dev/null 2>&1; then \
+		actionlint; \
+	else \
+		echo "WARNING: actionlint not installed — skipping workflow lint. Please install it: https://github.com/rhysd/actionlint#installation"; \
+	fi
+
+# All You Can Eat - Run all checks at CI strictness.
+# Target-specific exports propagate to every prerequisite recipe (build,
+# nextest, doc tests, clippy), so warnings become hard errors exactly like
+# the GitHub Actions job. Standalone targets (e.g. `make test`) stay lenient.
+ayce: export RUSTFLAGS := -Dwarnings
+ayce: export CARGO_INCREMENTAL := 0
+ayce: fmt actionlint build_test clippy-pedantic create_docs
+
+# Install required tools
+install-tools:
+	@echo "Installing development tools..."
+	cargo install cargo-deny
+	cargo install cargo-udeps
+	cargo install --locked cargo-mutants
+	cargo install --locked cargo-semver-checks
+	cargo install cargo-llvm-cov
+	rustup component add llvm-tools
+	@echo ""
+	@echo "✓ Tools installed!"
+	@echo ""
+
+# Watch mode for development (requires cargo-watch)
+watch:
+	cargo watch -x check -x test
+
+# Install cargo-watch
+install-watch:
+	cargo install cargo-watch
+
+# Run mutation testing on the full codebase (slow — can take hours)
+mutants:
+	@if ! cargo mutants --version >/dev/null 2>&1; then \
+		echo "cargo-mutants is not installed."; \
+		printf "Would you like to install it now? [y/N] "; \
+		read answer; \
+		if [ "$$answer" = "y" ] || [ "$$answer" = "Y" ]; then \
+			cargo install --locked cargo-mutants; \
+		else \
+			echo "Skipping. Run 'cargo install cargo-mutants' to install manually."; \
+			exit 1; \
+		fi; \
+	fi
+	cargo mutants
+
+# Run mutation testing only on files changed vs main (faster, good before pushing)
+mutants-diff:
+	@if ! cargo mutants --version >/dev/null 2>&1; then \
+		echo "cargo-mutants is not installed. Run 'make install-tools' first."; \
+		exit 1; \
+	fi
+	git diff main..HEAD > /tmp/ckc-rs-diff.txt
+	cargo mutants --in-diff /tmp/ckc-rs-diff.txt
+
+# Generate HTML code coverage report using cargo-llvm-cov
+coverage:
+	@if ! cargo llvm-cov --version >/dev/null 2>&1; then \
+		echo "cargo-llvm-cov is not installed."; \
+		printf "Would you like to install it now? [y/N] "; \
+		read answer; \
+		if [ "$$answer" = "y" ] || [ "$$answer" = "Y" ]; then \
+			cargo install cargo-llvm-cov; \
+			rustup component add llvm-tools; \
+		else \
+			echo "Skipping. Run 'cargo install cargo-llvm-cov && rustup component add llvm-tools' to install manually."; \
+			exit 1; \
+		fi; \
+	fi
+	cargo llvm-cov --html
+	@echo "Coverage report: target/llvm-cov/html/index.html"
+
+# Generate HTML coverage report and open in browser
+coverage-open: coverage
+	@COV_PATH="./target/llvm-cov/html/index.html"; \
+	if command -v xdg-open >/dev/null 2>&1; then \
+		xdg-open "$$COV_PATH"; \
+	elif command -v open >/dev/null 2>&1; then \
+		open "$$COV_PATH"; \
+	else \
+		echo "No supported opener found (tried xdg-open and open)."; \
+		echo "Open $$COV_PATH manually."; \
+		exit 1; \
+	fi

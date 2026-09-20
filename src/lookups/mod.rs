@@ -34,3 +34,39 @@ pub mod flushes;
 pub mod products;
 pub mod unique5;
 pub mod values;
+
+/// Proof that the tables above are derived, not magic.
+///
+/// `examples/gen_lookups.rs` rebuilds all four arrays from the rules of poker.
+/// It is pulled in here rather than duplicated so there is exactly one copy of
+/// the derivation, and these tests fail the moment it drifts from the committed
+/// files. See that file for the full explanation of how the tables work.
+#[cfg(test)]
+#[allow(dead_code)]
+#[path = "../../examples/gen_lookups.rs"]
+mod gen;
+
+#[cfg(test)]
+mod lookups_tests {
+    use super::*;
+
+    #[test]
+    fn generated_flushes_match() {
+        assert_eq!(super::gen::build().flushes, flushes::FLUSHES.to_vec());
+    }
+
+    #[test]
+    fn generated_unique5_match() {
+        assert_eq!(super::gen::build().unique5, unique5::UNIQUE_5.to_vec());
+    }
+
+    #[test]
+    fn generated_products_match() {
+        assert_eq!(super::gen::build().products, products::PRODUCTS.to_vec());
+    }
+
+    #[test]
+    fn generated_values_match() {
+        assert_eq!(super::gen::build().values, values::VALUES.to_vec());
+    }
+}
